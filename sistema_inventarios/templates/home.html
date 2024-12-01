@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Bienvenido al Sistema de Inventarios</h1>
+<p>Has iniciado sesión como {{ request.user.first_name }}</p>
+<a href="{% url 'logout' %}">Cerrar sesión</a>
+{% endblock %}
