@@ -2,33 +2,94 @@
 {% block content %}
 {% load crispy_forms_tags %}
 
-<div class="container d-flex justify-content-center align-items-center min-vh-100">
-    <div class="card shadow-lg" style="width: 30rem;">
-        <div class="card-body p-4">
-            <div class="text-center mb-4">
-                <div class="bg-wood bg-opacity-25 mx-auto mb-3" style="width: 60px; height: 60px; border-radius: 12px;">
-                    <i class="bi bi-person-plus text-wood" style="font-size: 2rem; line-height: 60px;"></i>
-                </div>
-                <h2 class="card-title h3 mb-2">Registro de Usuario</h2>
-                <p class="text-muted">Complete sus datos para crear una cuenta</p>
-            </div>
+<style>
+.register-container {
+    min-height: calc(100vh - 76px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
 
-            <form action="" method="post">
-                {% csrf_token %}
-                {{ form|crispy }}
-                
-                <div class="d-grid gap-2 mt-4">
-                    <button class="btn btn-wood btn-lg" type="submit">
-                        Registrarse
-                    </button>
-                </div>
-                
-                <div class="text-center mt-3">
-                    <a href="{% url 'home' %}" class="text-wood text-decoration-none mx-2">Inicio</a>
-                    <a href="{% url 'login' %}" class="text-wood text-decoration-none mx-2">Iniciar Sesión</a>
-                </div>
-            </form>
+.register-card {
+    background: white;
+    border-radius: 15px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.register-icon-wrapper {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.register-icon-wrapper i {
+    font-size: 2rem;
+    color: white;
+}
+
+.btn-gradient {
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(135deg, #405aa9 0%, #131f37 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.register-card a {
+    color: #4b6cb7;
+    transition: color 0.3s ease;
+}
+
+.register-card a:hover {
+    color: #182848;
+}
+</style>
+
+<div class="register-container">
+    <div class="register-card">
+        <div class="text-center mb-4">
+            <div class="register-icon-wrapper mb-3">
+                <i class="bi bi-person-plus"></i>
+            </div>
+            <h2>Registro de Usuario</h2>
+            <p class="text-muted">Complete sus datos para crear una cuenta</p>
         </div>
+
+        <form method="post">
+            {% csrf_token %}
+            {{ form|crispy }}
+            
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-gradient btn-lg">
+                    <i class="bi bi-check2-circle me-2"></i>Registrarse
+                </button>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="{% url 'login' %}" class="text-decoration-none mx-2">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Iniciar Sesión
+                </a>
+                <span class="text-muted">|</span>
+                <a href="{% url 'home' %}" class="text-decoration-none mx-2">
+                    <i class="bi bi-house-door me-1"></i>Inicio
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
