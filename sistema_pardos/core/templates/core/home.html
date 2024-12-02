@@ -1,14 +1,160 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+    }
 
+    .dashboard-container {
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+    }
 
-<h3>Inicio</h3>
-{% if request.user.is_authenticated %}
-<hr>
-<h4>
-    {{user.username | upper}}, bienvenido
-</h4>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        background: white;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-custom {
+        transition: all 0.3s;
+        border-radius: 10px;
+        background: linear-gradient(145deg, #ffffff, #f5f5f5);
+        box-shadow: 5px 5px 10px #e6e6e6, -5px -5px 10px #ffffff;
+    }
+
+    .btn-custom:hover {
+        box-shadow: inset 5px 5px 10px #e6e6e6, inset -5px -5px 10px #ffffff;
+    }
+
+    .welcome-banner {
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .stats-icon {
+        font-size: 2rem;
+        opacity: 0.8;
+    }
+
+    /* Estilos para la página de login */
+    .login-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 3rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+</style>
+
+{% if user.is_authenticated %}
+    <div class="container dashboard-container">
+        <!-- Banner de Bienvenida -->
+        <div class="welcome-banner">
+            <h1 class="display-5 fw-bold mb-0">Gestión de Inventarios</h1>
+            <p class="lead mb-0">Bienvenido, {{ user.username }}</p>
+        </div>
+
+        <!-- Tarjetas de Resumen -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card stats-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-box-seam stats-icon text-primary me-3"></i>
+                            <h5 class="card-title mb-0">Total de Productos</h5>
+                        </div>
+                        <p class="card-text display-6">0 items</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stats-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-exclamation-triangle stats-icon text-danger me-3"></i>
+                            <h5 class="card-title mb-0">Productos Faltantes</h5>
+                        </div>
+                        <p class="card-text display-6">0 items</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stats-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-currency-dollar stats-icon text-success me-3"></i>
+                            <h5 class="card-title mb-0">Valor Total</h5>
+                        </div>
+                        <p class="card-text display-6">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accesos Directos -->
+        <h2 class="h4 mb-3">Accesos Directos</h2>
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="d-grid">
+                    <button class="btn btn-custom btn-lg p-4">
+                        <i class="bi bi-boxes me-2"></i>
+                        Gestionar Inventarios
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid">
+                    <button class="btn btn-custom btn-lg p-4">
+                        <i class="bi bi-file-text me-2"></i>
+                        Ver Reportes
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid">
+                    <button class="btn btn-custom btn-lg p-4">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Agregar Producto
+                    </button>
+                </div>
+            </div>
+        </div>
+{% else %}
+    <div class="login-container">
+        <div class="login-card text-center">
+            <h1 class="display-4 mb-4">Bienvenido a Gestión de Inventarios</h1>
+            <p class="lead mb-4">Por favor, inicia sesión para acceder al sistema.</p>
+            <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-5">Iniciar Sesión</a>
+        </div>
+    </div>
 {% endif %}
 
-{% endblock %} 
+{% endblock %}
