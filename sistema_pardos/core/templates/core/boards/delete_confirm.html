@@ -1,0 +1,22 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Confirmar Eliminación</h5>
+    </div>
+    <div class="card-body">
+        <p>¿Estás seguro de que deseas eliminar el tablero "{{ board.material_type }} {{ board.color }} {{ board.thickness }}mm"?</p>
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'board_list' %}" class="btn btn-secondary">
+                <i class="bi bi-x-lg me-2"></i>Cancelar
+            </a>
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

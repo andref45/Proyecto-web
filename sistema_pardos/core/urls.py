@@ -1,27 +1,26 @@
-"""
-URL configuration for sistema_pardos project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.1/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-
 from django.urls import path
-from.views import home, products, exit, register
+from . import views
 
 urlpatterns = [
-    path('', home, name = 'home'),
-    path('products/', products, name =  'products'),
-    path('logout/', exit, name ='exit'),
-    path('register/', register, name ='register'),
+    # URLs existentes
+    path('', views.home, name='home'),
+    path('products/', views.products, name='products'),
+    path('logout/', views.exit, name='exit'),
+    path('register/', views.register, name='register'),
+    
+    # Gestión de Materiales
+    path('materials/', views.material_list, name='material_list'),
+    path('materials/add/', views.material_add, name='material_add'),
+    path('materials/<int:pk>/edit/', views.material_edit, name='material_edit'),
+    
+    # Gestión de Colores
+    path('colors/', views.color_list, name='color_list'),
+    path('colors/add/', views.color_add, name='color_add'),
+    path('colors/<int:pk>/edit/', views.color_edit, name='color_edit'),
+    
+    # Gestión de Tableros
+    path('boards/', views.board_list, name='board_list'),
+    path('boards/add/', views.board_add, name='board_add'),
+    path('boards/<int:pk>/edit/', views.board_edit, name='board_edit'),
+    path('boards/<int:pk>/delete/', views.board_delete, name='board_delete'),
 ]
-

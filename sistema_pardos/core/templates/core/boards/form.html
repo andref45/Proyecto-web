@@ -1,0 +1,80 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">{{ action }} Tablero</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Tipo de Material</label>
+                    {{ form.material_type }}
+                    {% if form.material_type.errors %}
+                        <div class="text-danger">{{ form.material_type.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Color</label>
+                    {{ form.color }}
+                    {% if form.color.errors %}
+                        <div class="text-danger">{{ form.color.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Espesor (mm)</label>
+                    {{ form.thickness }}
+                    {% if form.thickness.errors %}
+                        <div class="text-danger">{{ form.thickness.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Ancho (m)</label>
+                    {{ form.width }}
+                    {% if form.width.errors %}
+                        <div class="text-danger">{{ form.width.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Alto (m)</label>
+                    {{ form.height }}
+                    {% if form.height.errors %}
+                        <div class="text-danger">{{ form.height.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Precio por m²</label>
+                    {{ form.price_per_m2 }}
+                    {% if form.price_per_m2.errors %}
+                        <div class="text-danger">{{ form.price_per_m2.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Stock Mínimo</label>
+                    {{ form.minimum_stock }}
+                    {% if form.minimum_stock.errors %}
+                        <div class="text-danger">{{ form.minimum_stock.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mb-3 form-check">
+                {{ form.is_active }}
+                <label class="form-check-label">Activo</label>
+            </div>
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'board_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Volver
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-2"></i>Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

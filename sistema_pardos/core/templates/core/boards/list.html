@@ -1,0 +1,179 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Tableros y Aglomerados</h1>
+        <div>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="bi bi-funnel"></i> Filtrar
+            </button>
+            <a href="{% url 'board_add' %}" class="btn btn-success ms-2">
+                <i class="bi bi-plus-lg"></i> Nuevo Tablero
+            </a>
+        </div>
+    </div>
+
+    <!-- Tablero de resumen -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total Tableros</h6>
+                    <h2 class="card-title mb-0">{{ boards.count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Stock Bajo</h6>
+                    <h2 class="card-title mb-0">{{ low_stock_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Metros Cúbicos</h6>
+                    <h2 class="card-title mb-0">{{ total_m3|floatformat:2 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Valor Total</h6>
+                    <h2 class="card-title mb-0">${{ total_value|floatformat:2 }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Tableros -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th>Color</th>
+                            <th>Dimensiones</th>
+                            <th>Stock</th>
+                            <th>Precio/m²</th>
+                            <th>Último Mov.</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for board in boards %}
+                        <tr {% if board.needs_restock %}class="table-warning"{% endif %}>
+                            <td>{{ board.material_type.name }}</td>
+                            <td>
+                                <span class="d-inline-block" style="width: 20px; height: 20px; background-color: #{{ board.color.code }}; border: 1px solid #ddd; vertical-align: middle;"></span>
+                                {{ board.color.name }}
+                            </td>
+                            <td>{{ board.width }}m × {{ board.height }}m × {{ board.thickness }}mm</td>
+                            <td>
+                                <span class="badge {% if board.needs_restock %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ board.stock }}
+                                </span>
+                            </td>
+                            <td>${{ board.price_per_m2|floatformat:2 }}</td>
+                            <td>{{ board.last_movement_date|date:"d/m/Y" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-primary" 
+                                            onclick="quickEntry({{ board.id }})">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                    <a title="board_edit" href="{% url 'board_edit' board.id %}" class="btn btn-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-danger" 
+                                            onclick="confirmDelete({{ board.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No hay tableros registrados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="filterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Filtrar Tableros</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="get">
+                    <div class="mb-3">
+                        <label class="form-label">Material</label>
+                        <select name="material" class="form-select">
+                            <option value="">Todos</option>
+                            {% for material in materials %}
+                                <option value="{{ material.id }}" 
+                                        {% if request.GET.material|add:"0" == material.id %}selected{% endif %}>
+                                    {{ material.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Color</label>
+                        <select name="color" class="form-select">
+                            <option value="">Todos</option>
+                            {% for color in colors %}
+                                <option value="{{ color.id }}"
+                                        {% if request.GET.color|add:"0" == color.id %}selected{% endif %}>
+                                    {{ color.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Estado de Stock</label>
+                        <select name="stock_status" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="low" {% if request.GET.stock_status == 'low' %}selected{% endif %}>
+                                Stock Bajo
+                            </option>
+                            <option value="ok" {% if request.GET.stock_status == 'ok' %}selected{% endif %}>
+                                Stock Normal
+                            </option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Aplicar Filtros</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function quickEntry(boardId) {
+    // Implementar entrada rápida de inventario
+}
+
+function confirmDelete(boardId) {
+    if (confirm('¿Estás seguro de que deseas eliminar este tablero?')) {
+        window.location.href = `/boards/${boardId}/delete/`;
+    }
+}
+</script>
+{% endblock %}
+{% endblock %}

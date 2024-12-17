@@ -83,41 +83,42 @@
         </div>
 
         <!-- Tarjetas de Resumen -->
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
-                <div class="card stats-card h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-box-seam stats-icon text-primary me-3"></i>
-                            <h5 class="card-title mb-0">Total de Productos</h5>
-                        </div>
-                        <p class="card-text display-6">0 items</p>
-                    </div>
+        <!-- Reemplaza las tarjetas de resumen con esto -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-box-seam stats-icon text-primary me-3"></i>
+                    <h5 class="card-title mb-0">Total de Productos</h5>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card stats-card h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-exclamation-triangle stats-icon text-danger me-3"></i>
-                            <h5 class="card-title mb-0">Productos Faltantes</h5>
-                        </div>
-                        <p class="card-text display-6">0 items</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card stats-card h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-currency-dollar stats-icon text-success me-3"></i>
-                            <h5 class="card-title mb-0">Valor Total</h5>
-                        </div>
-                        <p class="card-text display-6">0</p>
-                    </div>
-                </div>
+                <p class="card-text display-6">{{ total_products }} items</p>
             </div>
         </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-exclamation-triangle stats-icon text-danger me-3"></i>
+                    <h5 class="card-title mb-0">Productos Faltantes</h5>
+                </div>
+                <p class="card-text display-6">{{ products_low_stock }} items</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-currency-dollar stats-icon text-success me-3"></i>
+                    <h5 class="card-title mb-0">Valor Total</h5>
+                </div>
+                <p class="card-text display-6">${{ total_value|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+</div>
 
         <!-- Accesos Directos -->
         <h2 class="h4 mb-3">Accesos Directos</h2>
