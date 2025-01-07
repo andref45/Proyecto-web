@@ -10,6 +10,15 @@ from django.db.models import Sum, F, Q
 from datetime import datetime, timedelta
 from .models import MaterialType, Color, Board, Inventory
 from .forms import MaterialTypeForm, ColorForm, BoardForm, InventoryMovementForm
+from django.contrib import messages
+from django.utils import timezone
+from django.db.models import Sum, Avg
+from .models import ProductionRecord
+from .forms import ProductionRecordForm, QuickProductionEntryForm
+import csv
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+import tempfile
 
 
 
@@ -197,3 +206,146 @@ def board_delete(request, pk):
         return redirect('board_list')
         
     return render(request, 'core/boards/delete_confirm.html', {'board': board})
+
+
+
+def get_daily_stats():
+    today = timezone.now().date()
+    records = ProductionRecord.objects.filter(date=today)
+    
+    return {
+        'total_meters': records.aggregate(Sum('meters_cut'))['meters_cut__sum'] or 0,
+        'total_pieces': records.aggregate(Sum('pieces_cut'))['pieces_cut__sum'] or 0,
+        'total_edges': records.aggregate(Sum('edges_applied'))['edges_applied__sum'] or 0,
+        'avg_waste': records.aggregate(Avg('waste_percentage'))['waste_percentage__avg'] or 0,
+    }
+
+@login_required
+def production_list(request):
+    today = timezone.now().date()
+    production_records = ProductionRecord.objects.filter(date=today)
+    daily_stats = get_daily_stats()
+    quick_form = QuickProductionEntryForm()
+
+    context = {
+        'production_records': production_records,
+        'daily_stats': daily_stats,
+        'quick_form': quick_form,
+    }
+    return render(request, 'production/production_list.html', context)
+
+@login_required
+def production_add(request):
+    if request.method == 'POST':
+        form = ProductionRecordForm(request.POST)
+        if form.is_valid():
+            production_record = form.save(commit=False)
+            production_record.operator = request.user 
+            production_record.date = timezone.now().date()
+            production_record.save()
+            messages.success(request, 'Registro de producción creado exitosamente.')
+            return redirect('production_list')
+    else:
+        form = ProductionRecordForm()  
+    
+    return render(request, 'production/production_form.html', {'form': form, 'title': 'Nuevo Registro'})
+
+@login_required
+def production_edit(request, pk):
+    production_record = get_object_or_404(ProductionRecord, pk=pk)
+    
+    if request.method == 'POST':
+        form = ProductionRecordForm(request.POST, instance=production_record)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Registro de producción actualizado exitosamente.')
+            return redirect('production_list')
+    else:
+        form = ProductionRecordForm(instance=production_record)
+    
+    return render(request, 'production/production_form.html', {'form': form, 'title': 'Editar Registro'})
+
+@login_required
+def production_delete(request, pk):
+    production_record = get_object_or_404(ProductionRecord, pk=pk)
+    production_record.delete()
+    messages.success(request, 'Registro de producción eliminado exitosamente.')
+    return redirect('production_list')
+
+@login_required
+def quick_production_entry(request):
+    if request.method == 'POST':
+        form = QuickProductionEntryForm(request.POST)
+        if form.is_valid():
+            production_record = form.save(commit=False)
+            production_record.operator = request.user
+            production_record.date = timezone.now().date()
+            production_record.start_time = timezone.now().time()
+            production_record.end_time = timezone.now().time()
+            production_record.save()
+            messages.success(request, 'Registro rápido creado exitosamente.')
+    return redirect('production_list')
+
+
+
+
+
+
+# Añade estas importaciones al inicio del archivo
+import csv
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from datetime import datetime
+
+@login_required
+def export_production_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="produccion_{}.csv"'.format(
+        datetime.now().strftime('%Y%m%d_%H%M%S')
+    )
+    
+    # Crear el escritor CSV
+    writer = csv.writer(response)
+    # Escribir encabezados
+    writer.writerow(['Operador', 'Fecha', 'Hora Inicio', 'Hora Fin', 
+                    'Metros Cortados', 'Piezas', 'Metros de Canto', 'Desperdicio'])
+    
+    # Obtener registros
+    records = ProductionRecord.objects.all().order_by('-date', '-start_time')
+    
+    # Escribir datos
+    for record in records:
+        writer.writerow([
+            record.operator.get_full_name(),
+            record.date,
+            record.start_time,
+            record.end_time,
+            record.meters_cut,
+            record.pieces_cut,
+            record.edges_applied or '-',
+            f"{record.waste_percentage}%"
+        ])
+    
+    return response
+
+@login_required
+def export_production_pdf(request):
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="produccion_{}.pdf"'.format(
+        datetime.now().strftime('%Y%m%d_%H%M%S')
+    )
+
+    # Obtener registros
+    records = ProductionRecord.objects.all().order_by('-date', '-start_time')
+    
+    # Renderizar el template HTML
+    html_string = render_to_string('production/production_pdf.html', {
+        'records': records,
+        'current_date': datetime.now()
+    })
+    
+    # Generar PDF usando WeasyPrint
+    from weasyprint import HTML
+    HTML(string=html_string).write_pdf(response)
+    
+    return response

@@ -1,0 +1,169 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Banner de Bienvenida -->
+    <div class="welcome-banner mb-4">
+        <h1 class="display-5 fw-bold mb-0">Producción Diaria</h1>
+        <p class="lead mb-0">Control y seguimiento de cortes</p>
+    </div>
+
+    <!-- Tarjetas de Resumen -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-rulers stats-icon text-primary me-3"></i>
+                        <h5 class="card-title mb-0">Metros Cortados</h5>
+                    </div>
+                    <p class="card-text display-6">{{ daily_stats.total_meters|floatformat:2 }}m</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-grid-3x3 stats-icon text-success me-3"></i>
+                        <h5 class="card-title mb-0">Piezas Totales</h5>
+                    </div>
+                    <p class="card-text display-6">{{ daily_stats.total_pieces }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-textarea-resize stats-icon text-info me-3"></i>
+                        <h5 class="card-title mb-0">Metros de Canto</h5>
+                    </div>
+                    <p class="card-text display-6">{{ daily_stats.total_edges|floatformat:2 }}m</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-percent stats-icon text-warning me-3"></i>
+                        <h5 class="card-title mb-0">Desperdicio</h5>
+                    </div>
+                    <p class="card-text display-6">{{ daily_stats.avg_waste|floatformat:1 }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 mb-0">Registros del Día</h2>
+        <div>
+            <button type="button" class="btn btn-custom" data-bs-toggle="modal" data-bs-target="#quickEntryModal">
+                <i class="bi bi-plus-lg me-2"></i>Entrada Rápida
+            </button>
+            <a href="{% url 'production_record_add' %}" class="btn btn-custom ms-2">
+                <i class="bi bi-file-earmark-plus me-2"></i>Nuevo Registro
+            </a>
+        </div>
+    </div>
+    <!-- Agregar esto junto a los otros botones de acción -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 mb-0">Registros del Día</h2>
+        <div>
+            <a href="{% url 'export_production_csv' %}" class="btn btn-custom">
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar CSV
+            </a>
+            
+            <button type="button" class="btn btn-custom ms-2" data-bs-toggle="modal" data-bs-target="#quickEntryModal">
+                <i class="bi bi-plus-lg me-2"></i>Entrada Rápida
+            </button>
+            <a href="{% url 'production_record_add' %}" class="btn btn-custom ms-2">
+                <i class="bi bi-file-earmark-plus me-2"></i>Nuevo Registro
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabla de Registros -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Operador</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th>Metros</th>
+                            <th>Piezas</th>
+                            <th>Cantos</th>
+                            <th>Desperdicio</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in production_records %}
+                        <tr>
+                            <td>{{ record.operator.get_full_name }}</td>
+                            <td>{{ record.start_time|time:"H:i" }}</td>
+                            <td>{{ record.end_time|time:"H:i" }}</td>
+                            <td>{{ record.meters_cut|floatformat:2 }}m</td>
+                            <td>{{ record.pieces_cut }}</td>
+                            <td>{{ record.edges_applied|default_if_none:"-"|floatformat:2 }}m</td>
+                            <td>{{ record.waste_percentage }}%</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a title="production" href="{% url 'production_record_edit' record.id %}"
+                                        class="btn btn-custom">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-danger"
+                                        onclick="confirmDelete('{{ record.id }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No hay registros para hoy</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Entrada Rápida -->
+<div class="modal fade" id="quickEntryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Entrada Rápida de Producción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'quick_production_entry' %}">
+                    {% csrf_token %}
+                    {{ quick_form.as_p }}
+                    <button type="submit" class="btn btn-primary w-100">Guardar Registro</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmDelete(recordId) {
+        if (confirm('¿Estás seguro de que deseas eliminar este registro?')) {
+            window.location.href = `/production/${recordId}/delete/`;
+        }
+    }
+</script>
+{% endblock %}

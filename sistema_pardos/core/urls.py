@@ -23,4 +23,13 @@ urlpatterns = [
     path('boards/add/', views.board_add, name='board_add'),
     path('boards/<int:pk>/edit/', views.board_edit, name='board_edit'),
     path('boards/<int:pk>/delete/', views.board_delete, name='board_delete'),
+
+     # Gestión de Producción
+    path('production/', views.production_list, name='production_list'),
+    path('production/add/', views.production_add, name='production_record_add'),
+    path('production/<int:pk>/edit/', views.production_edit, name='production_record_edit'),
+    path('production/<int:pk>/delete/', views.production_delete, name='production_record_delete'),
+    path('production/quick-entry/', views.quick_production_entry, name='quick_production_entry'),
+    path('production/export/csv/', views.export_production_csv, name='export_production_csv'),
+    #path('production/export/pdf/', views.export_production_pdf, name='export_production_pdf'),
 ]

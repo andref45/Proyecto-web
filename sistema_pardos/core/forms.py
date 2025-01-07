@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from .models import MaterialType, Color, Board, Inventory
+from .models import MaterialType, Color, Board, Inventory, ProductionRecord
 
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
@@ -174,4 +174,69 @@ class InventoryMovementForm(forms.ModelForm):
             'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class ProductionRecordForm(forms.ModelForm):
+    class Meta:
+        model = ProductionRecord
+        fields = ['start_time', 'end_time', 
+                 'meters_cut', 'pieces_cut', 'edges_applied', 
+                 'waste_percentage']  
+        widgets = {
+            'start_time': forms.TimeInput(attrs={
+                'class': 'form-control flatpickr-input time-input',
+                'placeholder': 'Seleccione hora',
+                'style': 'max-width: 200px;'
+            }),
+            'end_time': forms.TimeInput(attrs={
+                'class': 'form-control flatpickr-input time-input',
+                'placeholder': 'Seleccione hora',
+                'style': 'max-width: 200px;'
+            }),
+            'meters_cut': forms.NumberInput(attrs={
+                'step': '0.01',
+                'class': 'form-control',
+                'placeholder': 'Ingrese los metros cortados'
+            }),
+            'pieces_cut': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese el número de piezas'
+            }),
+            'edges_applied': forms.NumberInput(attrs={
+                'step': '0.01',
+                'class': 'form-control',
+                'placeholder': 'Ingrese los metros de canto aplicados'
+            }),
+            'waste_percentage': forms.NumberInput(attrs={
+                'step': '0.01',
+                'max': '100',
+                'min': '0',
+                'class': 'form-control',
+                'placeholder': 'Ingrese el porcentaje de desperdicio'
+            })
+        }
+
+
+class QuickProductionEntryForm(forms.ModelForm):
+    class Meta:
+        model = ProductionRecord
+        fields = ['meters_cut', 'pieces_cut', 'waste_percentage']
+        widgets = {
+            'meters_cut': forms.NumberInput(attrs={
+                'step': '0.01',
+                'placeholder': 'Metros cortados',
+                'class': 'form-control mb-2'
+            }),
+            'pieces_cut': forms.NumberInput(attrs={
+                'placeholder': 'Número de piezas',
+                'class': 'form-control mb-2'
+            }),
+            'waste_percentage': forms.NumberInput(attrs={
+                'step': '0.01',
+                'max': '100',
+                'min': '0',
+                'placeholder': 'Porcentaje de desperdicio',
+                'class': 'form-control mb-2'
+            })
         }

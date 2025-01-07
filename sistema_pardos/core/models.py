@@ -1,7 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
+from datetime import datetime
+
+
 
 class MaterialType(models.Model):
     """Tipo de material (MDF, Aglomerado, etc)"""
@@ -167,3 +170,64 @@ class Inventory(models.Model):
         self.board.last_movement_date = self.date
         self.board.save()
         super().save(*args, **kwargs)
+
+
+
+
+
+class ProductionRecord(models.Model):
+    operator = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE,
+        verbose_name="Operador"
+    )
+    date = models.DateField(
+        "Fecha",
+        auto_now_add=True
+    )
+    start_time = models.TimeField(
+        "Hora inicio"
+    )
+    end_time = models.TimeField(
+        "Hora fin"
+    )
+    meters_cut = models.DecimalField(
+        "Metros cortados",
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
+    pieces_cut = models.IntegerField(
+        "Piezas cortadas",
+        validators=[MinValueValidator(0)]
+    )
+    edges_applied = models.DecimalField(
+        "Metros de canto aplicados",
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        null=True,
+        blank=True
+    )
+    waste_percentage = models.DecimalField(
+        "Porcentaje de desperdicio",
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+
+    class Meta:
+        verbose_name = "Registro de producción"
+        verbose_name_plural = "Registros de producción"
+        ordering = ['-date', '-start_time']
+
+    def __str__(self):
+        return f"Producción {self.date} - {self.operator.get_full_name()}"
+
+    def get_duration(self):
+        """Calcula la duración del turno"""
+        if self.start_time and self.end_time:
+            start = datetime.combine(self.date, self.start_time)
+            end = datetime.combine(self.date, self.end_time)
+            return end - start
+        return None

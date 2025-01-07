@@ -72,7 +72,7 @@
                         <tr {% if board.needs_restock %}class="table-warning"{% endif %}>
                             <td>{{ board.material_type.name }}</td>
                             <td>
-                                <span class="d-inline-block" style="width: 20px; height: 20px; background-color: #{{ board.color.code }}; border: 1px solid #ddd; vertical-align: middle;"></span>
+                                <span class="d-inline-block" style="width: 20px; height: 20px; background-color: #{{ board.color.code|default:'FFFFFF' }}; border: 1px solid #ddd; vertical-align: middle;"></span>
                                 {{ board.color.name }}
                             </td>
                             <td>{{ board.width }}m × {{ board.height }}m × {{ board.thickness }}mm</td>
@@ -86,14 +86,14 @@
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <button type="button" class="btn btn-primary" 
-                                            onclick="quickEntry({{ board.id }})">
+                                            onclick="quickEntry('{{ board.id }}')">
                                         <i class="bi bi-plus"></i>
                                     </button>
                                     <a title="board_edit" href="{% url 'board_edit' board.id %}" class="btn btn-secondary">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-danger" 
-                                            onclick="confirmDelete({{ board.id }})">
+                                            onclick="confirmDelete('{{ board.id }}')">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
