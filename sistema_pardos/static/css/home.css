@@ -1,0 +1,58 @@
+/* Dashboard Container */
+.dashboard-container {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Welcome Banner */
+.welcome-banner {
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+/* Stats Cards */
+.stats-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.stats-icon {
+    font-size: 2rem;
+    opacity: 0.8;
+}
+
+/* Custom Button */
+.btn-custom {
+    transition: all 0.3s;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #ffffff, #f5f5f5);
+    box-shadow: 5px 5px 10px #e6e6e6, -5px -5px 10px #ffffff;
+}
+
+.btn-custom:hover {
+    box-shadow: inset 5px 5px 10px #e6e6e6, inset -5px -5px 10px #ffffff;
+}
+
+/* Login Section */
+.login-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    padding: 3rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}

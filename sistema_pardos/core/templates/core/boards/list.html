@@ -85,14 +85,14 @@
                             <td>{{ board.last_movement_date|date:"d/m/Y" }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-primary" 
+                                    <button title="boton" type="button" class="btn btn-primary" 
                                             onclick="quickEntry('{{ board.id }}')">
                                         <i class="bi bi-plus"></i>
                                     </button>
                                     <a title="board_edit" href="{% url 'board_edit' board.id %}" class="btn btn-secondary">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <button type="button" class="btn btn-danger" 
+                                    <button title="boton" type="button" class="btn btn-danger" 
                                             onclick="confirmDelete('{{ board.id }}')">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -116,13 +116,13 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Filtrar Tableros</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button title="boton" type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form method="get">
                     <div class="mb-3">
                         <label class="form-label">Material</label>
-                        <select name="material" class="form-select">
+                        <select title="boton" name="material" class="form-select">
                             <option value="">Todos</option>
                             {% for material in materials %}
                                 <option value="{{ material.id }}" 
@@ -134,7 +134,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Color</label>
-                        <select name="color" class="form-select">
+                        <select  title="boton"name="color" class="form-select">
                             <option value="">Todos</option>
                             {% for color in colors %}
                                 <option value="{{ color.id }}"
@@ -146,7 +146,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Estado de Stock</label>
-                        <select name="stock_status" class="form-select">
+                        <select title="boton" name="stock_status" class="form-select">
                             <option value="">Todos</option>
                             <option value="low" {% if request.GET.stock_status == 'low' %}selected{% endif %}>
                                 Stock Bajo

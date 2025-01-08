@@ -1,60 +1,38 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.5;
-            margin: 2cm;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f5f5f5;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-    <h1>Reporte de Producción</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Operador</th>
-                <th>Fecha</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Metros</th>
-                <th>Piezas</th>
-                <th>Cantos</th>
-                <th>Desperdicio</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for record in records %}
-            <tr>
-                <td>{{ record.operator.get_full_name }}</td>
-                <td>{{ record.date }}</td>
-                <td>{{ record.start_time|time:"H:i" }}</td>
-                <td>{{ record.end_time|time:"H:i" }}</td>
-                <td>{{ record.meters_cut|floatformat:2 }}m</td>
-                <td>{{ record.pieces_cut }}</td>
-                <td>{{ record.edges_applied|default_if_none:"-"|floatformat:2 }}m</td>
-                <td>{{ record.waste_percentage }}%</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</body>
-</html>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pdf.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1>Reporte de Producción</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Operador</th>
+            <th>Fecha</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Metros</th>
+            <th>Piezas</th>
+            <th>Cantos</th>
+            <th>Desperdicio</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in records %}
+        <tr>
+            <td>{{ record.operator.get_full_name }}</td>
+            <td>{{ record.date }}</td>
+            <td>{{ record.start_time|time:"H:i" }}</td>
+            <td>{{ record.end_time|time:"H:i" }}</td>
+            <td>{{ record.meters_cut|floatformat:2 }}m</td>
+            <td>{{ record.pieces_cut }}</td>
+            <td>{{ record.edges_applied|default_if_none:"-"|floatformat:2 }}m</td>
+            <td>{{ record.waste_percentage }}%</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

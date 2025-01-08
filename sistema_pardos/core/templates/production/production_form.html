@@ -5,22 +5,8 @@
 <!-- Flatpickr CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
-<style>
-    .flatpickr-input {
-        background-color: white !important;
-    }
-    .time-input-group {
-        position: relative;
-    }
-    .time-input-group i {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 4;
-        color: #6c757d;
-    }
-</style>
+<!-- Custom CSS -->
+<link rel="stylesheet" href="{% static 'css/production.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -29,7 +15,6 @@
         <h1 class="display-5 fw-bold mb-0">{{ title }}</h1>
         <p class="lead mb-0">Registro de Producción</p>
     </div>
-
     <div class="card">
         <div class="card-body">
             <form method="post">
@@ -70,7 +55,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Flatpickr JavaScript -->
+<!-- Mantener el mismo JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
 <script>
