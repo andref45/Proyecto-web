@@ -1,0 +1,156 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <div class="welcome-banner mb-4">
+        <h1 class="display-5 fw-bold mb-0">Ingreso de Medidas</h1>
+        <p class="lead mb-0">Pedido #{{ order.id }}</p>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form id="measurementForm" method="post">
+                {% csrf_token %}
+                <div id="measurementsList">
+                    <div class="row mb-3 measurement-row">
+                        <div class="col-md-3">
+                            <input type="number" step="0.01" class="form-control" placeholder="Largo (m)" required>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" step="0.01" class="form-control" placeholder="Ancho (m)" required>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" class="form-control" placeholder="Cantidad" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button title="boton" type="button" class="btn btn-danger remove-row">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="button" class="btn btn-secondary" id="addRow">
+                        <i class="bi bi-plus-circle me-2"></i>Agregar Medida
+                    </button>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Guardar Medidas
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const measurementsList = document.getElementById('measurementsList');
+    const addRowBtn = document.getElementById('addRow');
+    const form = document.getElementById('measurementForm');
+
+    // Función para crear nueva fila
+    function createMeasurementRow() {
+        const row = document.createElement('div');
+        row.className = 'row mb-3 measurement-row';
+        row.innerHTML = `
+            <div class="col-md-3">
+                <input type="number" step="0.01" name="largo[]" class="form-control" 
+                       placeholder="Largo (m)" required onchange="calculateTotals()">
+            </div>
+            <div class="col-md-3">
+                <input type="number" step="0.01" name="ancho[]" class="form-control" 
+                       placeholder="Ancho (m)" required onchange="calculateTotals()">
+            </div>
+            <div class="col-md-3">
+                <input type="number" name="cantidad[]" class="form-control" 
+                       placeholder="Cantidad" required onchange="calculateTotals()">
+            </div>
+            <div class="col-md-3 d-flex align-items-center">
+                <button type="button" class="btn btn-danger remove-row">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <span class="ms-3 subtotal"></span>
+            </div>`;
+
+        row.querySelector('.remove-row').addEventListener('click', function() {
+            row.remove();
+            calculateTotals();
+        });
+
+        measurementsList.appendChild(row);
+    }
+
+    // Agregar fila
+    addRowBtn.addEventListener('click', createMeasurementRow);
+
+    // Calcular totales
+    window.calculateTotals = function() {
+        let total = 0;
+        const rows = document.querySelectorAll('.measurement-row');
+        
+        rows.forEach(row => {
+            const largo = parseFloat(row.querySelector('[name="largo[]"]').value) || 0;
+            const ancho = parseFloat(row.querySelector('[name="ancho[]"]').value) || 0;
+            const cantidad = parseInt(row.querySelector('[name="cantidad[]"]').value) || 0;
+            
+            const subtotal = largo * ancho * cantidad;
+            total += subtotal;
+            
+            row.querySelector('.subtotal').textContent = 
+                subtotal > 0 ? `${subtotal.toFixed(2)} m²` : '';
+        });
+
+        document.getElementById('totalMeters').textContent = 
+            `Total: ${total.toFixed(2)} m²`;
+    }
+
+    // Manejar envío del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const measurements = [];
+        const rows = document.querySelectorAll('.measurement-row');
+        
+        rows.forEach(row => {
+            measurements.push({
+                largo: row.querySelector('[name="largo[]"]').value,
+                ancho: row.querySelector('[name="ancho[]"]').value,
+                cantidad: row.querySelector('[name="cantidad[]"]').value
+            });
+        });
+
+        // Enviar datos al servidor
+        fetch(`/orders/${orderId}/measurements/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ measurements: measurements })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                alert('Error al guardar las medidas');
+            }
+        });
+    });
+
+    // Crear primera fila al cargar
+    createMeasurementRow();
+});
+</script>
+{% endblock %}

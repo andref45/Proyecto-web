@@ -1,93 +1,213 @@
 {% extends 'core/base.html' %}
 {% load static %}
-
+{% load static custom_tags %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/home.css' %}">
 {% endblock %}
-
 {% block content %}
-
 {% if user.is_authenticated %}
-    <div class="container dashboard-container">
-        <!-- Banner de Bienvenida -->
-        <div class="welcome-banner">
-            <h1 class="display-5 fw-bold mb-0">Gestión de Inventarios</h1>
-            <p class="lead mb-0">Bienvenido, {{ user.username }}</p>
-        </div>
+<div class="container dashboard-container">
+    <!-- Banner de Bienvenida -->
+    <div class="welcome-banner">
+        <h1 class="display-5 fw-bold mb-0">Gestión de Inventarios</h1>
+        <p class="lead mb-0">Bienvenido, {{ user.username }}</p>
+    </div>
 
-        <!-- Tarjetas de Resumen -->
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="card stats-card h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <i class="bi bi-box-seam stats-icon text-primary me-3"></i>
-                    <h5 class="card-title mb-0">Total de Productos</h5>
+    <!-- Tarjetas de Resumen -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-box-seam stats-icon text-primary me-3"></i>
+                        <h5 class="card-title mb-0">Total de Productos</h5>
+                    </div>
+                    <p class="card-text display-6">{{ total_products }} items</p>
                 </div>
-                <p class="card-text display-6">{{ total_products }} items</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-triangle stats-icon text-danger me-3"></i>
+                        <h5 class="card-title mb-0">Productos Faltantes</h5>
+                    </div>
+                    <p class="card-text display-6">{{ products_low_stock }} items</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-currency-dollar stats-icon text-success me-3"></i>
+                        <h5 class="card-title mb-0">Valor Total</h5>
+                    </div>
+                    <p class="card-text display-6">${{ total_value|floatformat:2 }}</p>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card stats-card h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <i class="bi bi-exclamation-triangle stats-icon text-danger me-3"></i>
-                    <h5 class="card-title mb-0">Productos Faltantes</h5>
-                </div>
-                <p class="card-text display-6">{{ products_low_stock }} items</p>
+
+    <!-- Accesos Directos -->
+    <h2 class="h4 mb-3">Accesos Directos</h2>
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="d-grid">
+                <a href="{% url 'board_list' %}" class="btn btn-custom btn-lg p-4">
+                    <i class="bi bi-boxes me-2"></i>
+                    Gestionar Inventarios
+                </a>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="d-grid">
+                <a href="{% url 'production_list' %}" class="btn btn-custom btn-lg p-4">
+                    <i class="bi bi-file-text me-2"></i>
+                    Ver Reportes
+                </a>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="d-grid">
+                <a href="{% url 'board_add' %}" class="btn btn-custom btn-lg p-4">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Agregar Producto
+                </a>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="d-grid">
+                <a href="{% url 'order_create' %}" class="btn btn-custom btn-lg p-4">
+                    <i class="bi bi-clipboard-plus me-2"></i>
+                    Nuevo Pedido
+                </a>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card stats-card h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <i class="bi bi-currency-dollar stats-icon text-success me-3"></i>
-                    <h5 class="card-title mb-0">Valor Total</h5>
+
+    <!-- Pedidos Recientes -->
+    <div class="card mt-4">
+        <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Pedidos Recientes</h5>
+                <a href="{% url 'order_create' %}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle me-1"></i>Nuevo Pedido
+                </a>
+            </div>
+
+            <!-- Filtros -->
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <form method="get" class="d-flex gap-2">
+                        <select title="b" name="status" class="form-select form-select-sm">
+                            <option value="">Todos los estados</option>
+                            {% for value, label in order_status_choices %}
+                            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input placeholder="Fecha" type="date" name="date" class="form-control form-control-sm" 
+                               value="{{ selected_date }}" style="width: 150px;">
+                        <button type="submit" class="btn btn-sm btn-secondary">
+                            <i class="bi bi-funnel"></i> Filtrar
+                        </button>
+                    </form>
                 </div>
-                <p class="card-text display-6">${{ total_value|floatformat:2 }}</p>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Cliente</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Total m²</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.customer.get_full_name }}</td>
+                                <td>{{ order.get_customer_type_display }}</td>
+                                <td>
+                                    <span class="badge bg-{{ order.status|status_badge }}">
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ order.total_meters|default:"--" }}</td>
+                                <td>
+                                    <a title="b" href="{% url 'order_detail' order.id %}" 
+                                       class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-3">
+                                    No hay pedidos que mostrar
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
-
-        <!-- Accesos Directos -->
-        <h2 class="h4 mb-3">Accesos Directos</h2>
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
-                <div class="d-grid">
-                    <button class="btn btn-custom btn-lg p-4">
-                        <i class="bi bi-boxes me-2"></i>
-                        Gestionar Inventarios
-                    </button>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="d-grid">
-                    <button class="btn btn-custom btn-lg p-4">
-                        <i class="bi bi-file-text me-2"></i>
-                        Ver Reportes
-                    </button>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="d-grid">
-                    <button class="btn btn-custom btn-lg p-4">
-                        <i class="bi bi-plus-circle me-2"></i>
-                        Agregar Producto
-                    </button>
-                </div>
-            </div>
-        </div>
 {% else %}
-    <div class="login-container">
-        <div class="login-card text-center">
-            <h1 class="display-4 mb-4">Bienvenido a Gestión de Inventarios</h1>
-            <p class="lead mb-4">Por favor, inicia sesión para acceder al sistema.</p>
-            <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-5">Iniciar Sesión</a>
+<div class="login-container">
+    <div class="login-card text-center">
+        <h1 class="display-4 mb-4">Bienvenido a Gestión de Inventarios</h1>
+        <p class="lead mb-4">Por favor, inicia sesión para acceder al sistema.</p>
+        <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-5">Iniciar Sesión</a>
+    </div>
+</div>
+{% endif %}
+<!-- Modales para actualizar estado -->
+{% for order in recent_orders %}
+<div class="modal fade" id="updateStatusModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Actualizar Estado - Pedido #{{ order.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'order_update_status' order.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Estado Actual: 
+                            <span class="badge bg-{{ order.status|status_badge }}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </label>
+                        <select name="status" class="form-select">
+                            {% for value, label in order_status_choices %}
+                            <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
         </div>
     </div>
-{% endif %}
-
+</div>
+{% endfor %}
 {% endblock %}

@@ -56,3 +56,55 @@
     padding: 3rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
+
+
+/* Estilos para los badges de estado */
+.badge {
+    padding: 0.5em 1em;
+    font-weight: 500;
+}
+
+/* Estilos para la imagen del pedido */
+.order-image {
+    max-height: 300px;
+    object-fit: contain;
+}
+
+/* Estilos para el modal */
+.modal-header {
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    color: white;
+}
+
+.modal-header .btn-close {
+    color: white;
+}
+
+
+/* Estilos para la tabla de pedidos */
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Estilos para los badges de estado */
+.badge {
+    font-size: 0.85rem;
+    padding: 0.5em 0.8em;
+}
+
+/* Estilos para los filtros */
+.form-select-sm, .form-control-sm {
+    height: 31px;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+/* Hover effect en las filas de la tabla */
+.table tbody tr:hover {
+    background-color: rgba(0,0,0,.02);
+}

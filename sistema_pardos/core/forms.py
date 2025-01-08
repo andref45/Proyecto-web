@@ -3,6 +3,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from .models import MaterialType, Color, Board, Inventory, ProductionRecord
+from django import forms
+from .models import Order
 
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
@@ -238,5 +240,40 @@ class QuickProductionEntryForm(forms.ModelForm):
                 'min': '0',
                 'placeholder': 'Porcentaje de desperdicio',
                 'class': 'form-control mb-2'
+            })
+        }
+
+
+
+class OrderForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = [
+            'customer_type', 'carpentry_business', 'phone', 
+            'address', 'notes', 'image'
+        ]
+        widgets = {
+            'customer_type': forms.Select(attrs={
+                'class': 'form-control',
+                'onchange': 'toggleBusinessFields(this.value)'
+            }),
+            'carpentry_business': forms.TextInput(attrs={
+                'class': 'form-control carpentry-field'
+            }),
+            'phone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'type': 'tel'
+            }),
+            'address': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3
+            }),
+            'image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
             })
         }

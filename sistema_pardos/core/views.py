@@ -19,11 +19,50 @@ import csv
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 import tempfile
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import Order
+from .forms import OrderForm
 
 
-
+@login_required
 def home(request):
-    return render(request, 'core/home.html')
+    # Estadísticas generales
+    total_products = Board.objects.filter(is_active=True).count()
+    products_low_stock = Board.objects.filter(
+        is_active=True,
+        stock__lte=F('minimum_stock')
+    ).count()
+    total_value = Board.objects.filter(is_active=True).aggregate(
+        total=Sum(F('stock') * F('price_per_m2') * F('width') * F('height'))
+    )['total'] or Decimal('0')
+    
+    # Filtros de pedidos
+    status_filter = request.GET.get('status', '')
+    date_filter = request.GET.get('date', '')
+    
+    # Query base para pedidos
+    recent_orders = Order.objects.all()
+    
+    # Aplicar filtros
+    if status_filter:
+        recent_orders = recent_orders.filter(status=status_filter)
+    if date_filter:
+        recent_orders = recent_orders.filter(created_at__date=date_filter)
+    
+    recent_orders = recent_orders.order_by('-created_at')[:10]  # Últimos 10 pedidos
+
+    context = {
+        'total_products': total_products,
+        'products_low_stock': products_low_stock,
+        'total_value': total_value,
+        'recent_orders': recent_orders,
+        'order_status_choices': Order.STATUS_CHOICES,
+        'selected_status': status_filter,
+        'selected_date': date_filter,
+    }
+    return render(request, 'core/home.html', context)
 
 @login_required
 def products(request):
@@ -288,10 +327,6 @@ def quick_production_entry(request):
 
 
 
-
-
-
-# Añade estas importaciones al inicio del archivo
 import csv
 from django.http import HttpResponse
 from django.template.loader import render_to_string
@@ -338,14 +373,77 @@ def export_production_pdf(request):
     # Obtener registros
     records = ProductionRecord.objects.all().order_by('-date', '-start_time')
     
-    # Renderizar el template HTML
     html_string = render_to_string('production/production_pdf.html', {
         'records': records,
         'current_date': datetime.now()
     })
     
-    # Generar PDF usando WeasyPrint
     from weasyprint import HTML
     HTML(string=html_string).write_pdf(response)
     
     return response
+
+
+
+@login_required
+def order_create(request):
+    if request.method == 'POST':
+        form = OrderForm(request.POST, request.FILES)
+        if form.is_valid():
+            order = form.save(commit=False)
+            order.customer = request.user
+            order.save()
+            messages.success(request, 'Pedido creado exitosamente.')
+            return redirect('home')
+    else:
+        form = OrderForm()
+    return render(request, 'core/orders/form.html', {'form': form, 'title': 'Nuevo Pedido'})
+
+@login_required
+def order_detail(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    return render(request, 'core/orders/detail.html', {'order': order})
+
+
+
+@login_required
+def order_update_status(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+        if new_status in dict(Order.STATUS_CHOICES):
+            order.status = new_status
+            order.save()
+            messages.success(request, 'Estado del pedido actualizado exitosamente.')
+        else:
+            messages.error(request, 'Estado inválido.')
+        return redirect('order_detail', pk=pk)
+    return redirect('order_detail', pk=pk)
+
+
+@login_required
+def order_measurements(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        measurements = data.get('measurements', [])
+        
+        # Validar medidas
+        for measurement in measurements:
+            if not all(key in measurement for key in ['largo', 'ancho', 'cantidad']):
+                return JsonResponse({'success': False, 'error': 'Datos incompletos'})
+        
+        # Guardar medidas
+        order.measurements = measurements
+        order.save()  # Esto llamará a calculate_total_meters automáticamente
+        
+        return JsonResponse({
+            'success': True,
+            'redirect_url': reverse('order_detail', args=[order.pk])
+        })
+    
+    return render(request, 'orders/measurements.html', {
+        'order': order,
+        'measurements': order.measurements or []
+    })

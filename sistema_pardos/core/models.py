@@ -231,3 +231,101 @@ class ProductionRecord(models.Model):
             end = datetime.combine(self.date, self.end_time)
             return end - start
         return None
+    
+
+class Order(models.Model):
+    """Modelo para los pedidos de clientes"""
+    STATUS_CHOICES = [
+        ('pending', 'Pendiente'),
+        ('processing', 'En Proceso'),
+        ('cutting', 'En Corte'),
+        ('edge_banding', 'En Enchapado'),
+        ('completed', 'Completado'),
+        ('delivered', 'Entregado'),
+    ]
+
+    CUSTOMER_TYPE_CHOICES = [
+        ('carpenter', 'Carpintero'),
+        ('architect', 'Arquitecto'),
+        ('customer', 'Cliente Final'),
+    ]
+
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Cliente")
+    customer_type = models.CharField(max_length=20, choices=CUSTOMER_TYPE_CHOICES, verbose_name="Tipo de Cliente")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Estado")
+    image = models.ImageField(upload_to='orders/', null=True, blank=True, verbose_name="Imagen de Medidas")
+    notes = models.TextField(blank=True, verbose_name="Notas")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
+
+    class Meta:
+        verbose_name = "Pedido"
+        verbose_name_plural = "Pedidos"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Pedido #{self.id} - {self.customer.get_full_name()}"
+    carpentry_business = models.CharField(
+        max_length=200, 
+        blank=True,
+        verbose_name="Nombre del Negocio"
+    )
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Teléfono"
+    )
+    address = models.TextField(
+        blank=True,
+        verbose_name="Dirección"
+    )
+    
+    # Campos de medidas
+    measurements = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="Medidas"
+    )
+    total_meters = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Total Metros"
+    )
+    estimated_delivery = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Entrega Estimada"
+    )
+
+    def calculate_total_meters(self):
+        """Calcula el total de metros basado en las medidas"""
+        if self.measurements:
+            pass
+        return 0
+    
+
+def calculate_total_meters(self):
+    """Calcula el total de metros basado en las medidas"""
+    if self.measurements:
+        total = 0
+        for item in self.measurements:
+            largo = float(item.get('largo', 0))
+            ancho = float(item.get('ancho', 0))
+            cantidad = int(item.get('cantidad', 0))
+            total += (largo * ancho * cantidad)
+        return round(total, 2)
+    return 0
+
+def save(self, *args, **kwargs):
+    if self.measurements:
+        self.total_meters = self.calculate_total_meters()
+        
+        # Calcular tiempo estimado de entrega basado en metros totales
+        if not self.estimated_delivery:
+            metros_por_hora = 20  # Valor ejemplo, ajustar según necesidad
+            horas_estimadas = self.total_meters / metros_por_hora
+            self.estimated_delivery = timezone.now() + timedelta(hours=horas_estimadas)
+    
+    super().save(*args, **kwargs)

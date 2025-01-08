@@ -1,0 +1,103 @@
+{% extends 'core/base.html' %}
+{% load static custom_tags %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <div class="welcome-banner mb-4">
+        <h1 class="display-5 fw-bold mb-0">Detalles del Pedido #{{ order.id }}</h1>
+        <p class="lead mb-0">
+            Estado: 
+            <span class="badge bg-{{ order.status|status_badge }}">
+                {{ order.get_status_display }}
+            </span>
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Información del Cliente</h5>
+                    <dl class="row">
+                        <dt class="col-sm-4">Cliente:</dt>
+                        <dd class="col-sm-8">{{ order.customer.get_full_name }}</dd>
+                        
+                        <dt class="col-sm-4">Tipo:</dt>
+                        <dd class="col-sm-8">{{ order.get_customer_type_display }}</dd>
+                        
+                        <dt class="col-sm-4">Fecha:</dt>
+                        <dd class="col-sm-8">{{ order.created_at|date:"d/m/Y H:i" }}</dd>
+                    </dl>
+                </div>
+                
+                {% if order.image %}
+                <div class="col-md-6">
+                    <h5>Imagen Adjunta</h5>
+                    <img src="{{ order.image.url }}" alt="Medidas" class="img-fluid rounded">
+                </div>
+                {% endif %}
+            </div>
+
+            {% if order.notes %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h5>Notas</h5>
+                    <p class="mb-0">{{ order.notes|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="{% url 'home' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Volver
+                    </a>
+                    
+                    {% if user.is_staff %}
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+                        <i class="bi bi-pencil me-2"></i>Editar Estado
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Modal para actualizar estado -->
+            {% if user.is_staff %}
+            <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Actualizar Estado del Pedido</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="post" action="{% url 'order_update_status' order.id %}">
+                            {% csrf_token %}
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Nuevo Estado</label>
+                                    <select name="status" class="form-select">
+                                        {% for value, label in order.STATUS_CHOICES %}
+                                        <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

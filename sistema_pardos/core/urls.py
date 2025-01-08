@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # URLs existentes
@@ -24,6 +26,12 @@ urlpatterns = [
     path('boards/<int:pk>/edit/', views.board_edit, name='board_edit'),
     path('boards/<int:pk>/delete/', views.board_delete, name='board_delete'),
 
+    # Orders
+    path('orders/create/', views.order_create, name='order_create'),
+    path('orders/<int:pk>/', views.order_detail, name='order_detail'),
+    path('orders/<int:pk>/update-status/', views.order_update_status, name='order_update_status'),
+    path('orders/<int:pk>/measurements/', views.order_measurements, name='order_measurements'),
+
      # Gestión de Producción
     path('production/', views.production_list, name='production_list'),
     path('production/add/', views.production_add, name='production_record_add'),
@@ -31,5 +39,4 @@ urlpatterns = [
     path('production/<int:pk>/delete/', views.production_delete, name='production_record_delete'),
     path('production/quick-entry/', views.quick_production_entry, name='quick_production_entry'),
     path('production/export/csv/', views.export_production_csv, name='export_production_csv'),
-    #path('production/export/pdf/', views.export_production_pdf, name='export_production_pdf'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
