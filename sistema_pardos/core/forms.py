@@ -253,27 +253,42 @@ class OrderForm(forms.ModelForm):
             'address', 'notes', 'image'
         ]
         widgets = {
-            'customer_type': forms.Select(attrs={
-                'class': 'form-control',
-                'onchange': 'toggleBusinessFields(this.value)'
-            }),
-            'carpentry_business': forms.TextInput(attrs={
-                'class': 'form-control carpentry-field'
-            }),
-            'phone': forms.TextInput(attrs={
-                'class': 'form-control',
-                'type': 'tel'
-            }),
-            'address': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 2
-            }),
-            'notes': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3
-            }),
-            'image': forms.FileInput(attrs={
-                'class': 'form-control',
-                'accept': 'image/*'
-            })
+            'customer_type': forms.Select(
+                attrs={
+                    'class': 'form-control',
+                    'id': 'customerType'
+                }),
+            'carpentry_business': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Nombre del negocio'
+                }),
+            'phone': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Número de contacto'
+                }),
+            'address': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 2,
+                    'placeholder': 'Dirección de entrega'
+                }),
+            'notes': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 3,
+                    'placeholder': 'Notas o instrucciones especiales'
+                }),
+            'image': forms.FileInput(
+                attrs={
+                    'class': 'form-control',
+                    'accept': 'image/*'
+                })
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['carpentry_business'].required = False
+        self.fields['phone'].required = False
+        self.fields['address'].required = False

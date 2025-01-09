@@ -12,6 +12,87 @@
         <h1 class="display-5 fw-bold mb-0">Gestión de Inventarios</h1>
         <p class="lead mb-0">Bienvenido, {{ user.username }}</p>
     </div>
+    <!-- Estadísticas de Pedidos -->
+    <div class="row mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="bi bi-clipboard-data"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1">Pedidos Hoy</h6>
+                            <h3 class="mb-0">{{ orders_stats.total_today }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="stat-icon bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1">Completados</h6>
+                            <h3 class="mb-0">{{ orders_stats.completed }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1">En Proceso</h6>
+                            <h3 class="mb-0">{{ orders_stats.processing }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="stat-icon bg-info bg-opacity-10 text-info">
+                                <i class="bi bi-rulers"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1">Metros este mes</h6>
+                            <h3 class="mb-0">{{ orders_stats.total_meters_month|floatformat:1 }}m²</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Actividad Reciente</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="ordersChart" height="100"></canvas>
+        </div>
+    </div>
 
     <!-- Tarjetas de Resumen -->
     <div class="row g-4 mb-4">
@@ -109,8 +190,8 @@
                             </option>
                             {% endfor %}
                         </select>
-                        <input placeholder="Fecha" type="date" name="date" class="form-control form-control-sm" 
-                               value="{{ selected_date }}" style="width: 150px;">
+                        <input placeholder="Fecha" type="date" name="date" class="form-control form-control-sm"
+                            value="{{ selected_date }}" style="width: 150px;">
                         <button type="submit" class="btn btn-sm btn-secondary">
                             <i class="bi bi-funnel"></i> Filtrar
                         </button>
@@ -134,30 +215,29 @@
                     </thead>
                     <tbody>
                         {% for order in recent_orders %}
-                            <tr>
-                                <td>#{{ order.id }}</td>
-                                <td>{{ order.customer.get_full_name }}</td>
-                                <td>{{ order.get_customer_type_display }}</td>
-                                <td>
-                                    <span class="badge bg-{{ order.status|status_badge }}">
-                                        {{ order.get_status_display }}
-                                    </span>
-                                </td>
-                                <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
-                                <td>{{ order.total_meters|default:"--" }}</td>
-                                <td>
-                                    <a title="b" href="{% url 'order_detail' order.id %}" 
-                                       class="btn btn-sm btn-info">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                </td>
-                            </tr>
+                        <tr>
+                            <td>#{{ order.id }}</td>
+                            <td>{{ order.customer.get_full_name }}</td>
+                            <td>{{ order.get_customer_type_display }}</td>
+                            <td>
+                                <span class="badge bg-{{ order.status|status_badge }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>{{ order.total_meters|default:"--" }}</td>
+                            <td>
+                                <a title="b" href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
                         {% empty %}
-                            <tr>
-                                <td colspan="7" class="text-center py-3">
-                                    No hay pedidos que mostrar
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="7" class="text-center py-3">
+                                No hay pedidos que mostrar
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -174,6 +254,7 @@
     </div>
 </div>
 {% endif %}
+
 <!-- Modales para actualizar estado -->
 {% for order in recent_orders %}
 <div class="modal fade" id="updateStatusModal{{ order.id }}" tabindex="-1" aria-hidden="true">
@@ -187,13 +268,14 @@
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Estado Actual: 
+                        <label class="form-label">Estado Actual:
                             <span class="badge bg-{{ order.status|status_badge }}">
                                 {{ order.get_status_display }}
                             </span>
                         </label>
                         <select name="status" class="form-select">
                             {% for value, label in order_status_choices %}
+                            <!-- <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}> -->
                             <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>
                                 {{ label }}
                             </option>
@@ -210,4 +292,73 @@
     </div>
 </div>
 {% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('ordersChart');
+        if (ctx) {
+            const chartData = {
+                labels: JSON.parse('{{ chart_data.labels|safe }}'),
+                orders: JSON.parse('{{ chart_data.orders|safe }}'),
+                meters: JSON.parse('{{ chart_data.meters|safe }}')
+            };
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Pedidos',
+                        data: chartData.orders,
+                        borderColor: '#4b6cb7',
+                        backgroundColor: 'rgba(75, 108, 183, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Metros²',
+                        data: chartData.meters,
+                        borderColor: '#182848',
+                        backgroundColor: 'rgba(24, 40, 72, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Número de Pedidos'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Metros Cuadrados'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}

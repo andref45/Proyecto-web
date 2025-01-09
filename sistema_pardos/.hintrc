@@ -6,8 +6,11 @@
     "axe/structure": [
       "default",
       {
-        "list": "off"
+        "list": "off",
+        "definition-list": "off"
       }
-    ]
+    ],
+    "no-inline-styles": "off",
+    "meta-viewport": "off"
   }
 }

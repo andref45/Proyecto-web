@@ -2,7 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from django.db import transaction
 
 
 
@@ -34,17 +35,17 @@ class Color(models.Model):
 class Board(models.Model):
     """Modelo para los tableros"""
     material_type = models.ForeignKey(
-        MaterialType, 
+        MaterialType,
         on_delete=models.PROTECT,
         verbose_name="Tipo de Material"
     )
     color = models.ForeignKey(
-        Color, 
+        Color,
         on_delete=models.PROTECT,
         verbose_name="Color"
     )
     thickness = models.DecimalField(
-        max_digits=5, 
+        max_digits=5,
         decimal_places=2,
         help_text="Espesor en milímetros",
         verbose_name="Espesor"
@@ -83,34 +84,27 @@ class Board(models.Model):
         default=True,
         verbose_name="Activo"
     )
-    
+
     class Meta:
         verbose_name = "Tablero"
         verbose_name_plural = "Tableros"
         unique_together = ['material_type', 'color', 'thickness']
-    
+
     def __str__(self):
         return f"{self.material_type} {self.color} {self.thickness}mm"
-    
+
     @property
-    def volume_m3(self):
-        """Calcula el volumen en metros cúbicos"""
-        return (self.width * self.height * self.thickness/1000)
-    
-    @property
-    def total_volume_m3(self):
-        """Calcula el volumen total del stock en metros cúbicos"""
-        return self.volume_m3 * self.stock
-    
+    def needs_restock(self):
+        """Verifica si el stock está por debajo del mínimo"""
+        return self.stock <= self.minimum_stock
+
     @property
     def days_without_movement(self):
-        """Calcula días sin movimiento"""
+        """Calcula días sin movimiento para control de rotación"""
         from django.utils import timezone
         return (timezone.now().date() - self.last_movement_date).days
     
-    @property
-    def needs_restock(self):
-        return self.stock <= self.minimum_stock
+
 
 class Inventory(models.Model):
     """Registro de movimientos de inventario"""
@@ -319,13 +313,39 @@ def calculate_total_meters(self):
     return 0
 
 def save(self, *args, **kwargs):
-    if self.measurements:
-        self.total_meters = self.calculate_total_meters()
+    # Si es una instancia nueva o el estado ha cambiado
+    if not self.pk or (
+        self.pk and 
+        Order.objects.filter(pk=self.pk).exists() and 
+        Order.objects.get(pk=self.pk).status != self.status
+    ):
+        # Guardar el historial después de que el pedido se guarde
+        def save_history():
+            OrderStatusHistory.objects.create(
+                order=self,
+                status=self.status,
+                created_by=getattr(self, '_current_user', None)
+            )
+            
+        # Usar transaction.on_commit para asegurar que el historial se guarde
+        # solo si la transacción del pedido es exitosa
+        transaction.on_commit(save_history)
         
-        # Calcular tiempo estimado de entrega basado en metros totales
-        if not self.estimated_delivery:
-            metros_por_hora = 20  # Valor ejemplo, ajustar según necesidad
-            horas_estimadas = self.total_meters / metros_por_hora
-            self.estimated_delivery = timezone.now() + timedelta(hours=horas_estimadas)
-    
     super().save(*args, **kwargs)
+
+
+class OrderStatusHistory(models.Model):
+    order = models.ForeignKey(
+        Order, 
+        on_delete=models.CASCADE,
+        related_name='status_history'
+    )
+    status = models.CharField(
+        max_length=20, 
+        choices=Order.STATUS_CHOICES
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        ordering = ['-created_at']

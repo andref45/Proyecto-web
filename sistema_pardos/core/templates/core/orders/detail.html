@@ -3,100 +3,280 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/home.css' %}">
+<style>
+    .progress-step {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        background: #f8f9fa;
+        border: 2px solid #dee2e6;
+        color: #6c757d;
+        position: relative;
+        z-index: 1;
+    }
+
+    .progress-step.active {
+        background: #4b6cb7;
+        border-color: #4b6cb7;
+        color: white;
+    }
+
+    .progress-step.completed {
+        background: #198754;
+        border-color: #198754;
+        color: white;
+    }
+
+    .progress-line {
+        flex: 1;
+        height: 2px;
+        background: #dee2e6;
+        margin: 0 -1px;
+    }
+
+    .progress-line.active {
+        background: #4b6cb7;
+    }
+
+    .measurement-table th {
+        background-color: #f8f9fa;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container dashboard-container">
+    <!-- Encabezado -->
     <div class="welcome-banner mb-4">
-        <h1 class="display-5 fw-bold mb-0">Detalles del Pedido #{{ order.id }}</h1>
-        <p class="lead mb-0">
-            Estado: 
-            <span class="badge bg-{{ order.status|status_badge }}">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 fw-bold mb-0">Pedido #{{ order.id }}</h1>
+                <p class="lead mb-0">{{ order.created_at|date:"d/m/Y H:i" }}</p>
+            </div>
+            <span class="badge bg-{{ order.status|status_badge }} fs-5">
                 {{ order.get_status_display }}
             </span>
-        </p>
+        </div>
     </div>
 
-    <div class="card">
+    <!-- Progreso del pedido -->
+    <div class="card mb-4">
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Información del Cliente</h5>
-                    <dl class="row">
-                        <dt class="col-sm-4">Cliente:</dt>
-                        <dd class="col-sm-8">{{ order.customer.get_full_name }}</dd>
-                        
-                        <dt class="col-sm-4">Tipo:</dt>
-                        <dd class="col-sm-8">{{ order.get_customer_type_display }}</dd>
-                        
-                        <dt class="col-sm-4">Fecha:</dt>
-                        <dd class="col-sm-8">{{ order.created_at|date:"d/m/Y H:i" }}</dd>
-                    </dl>
+            <div class="d-flex align-items-center justify-content-between px-4">
+                {% with status_index=order.status|get_status_index %}
+                <div class="progress-step {% if status_index >= 0 %}completed{% endif %}">
+                    <i class="bi bi-check-lg"></i>
                 </div>
-                
-                {% if order.image %}
-                <div class="col-md-6">
-                    <h5>Imagen Adjunta</h5>
-                    <img src="{{ order.image.url }}" alt="Medidas" class="img-fluid rounded">
+                <div class="progress-line {% if status_index >= 1 %}active{% endif %}"></div>
+                <div
+                    class="progress-step {% if status_index >= 1 %}completed{% elif status_index == 0 %}active{% endif %}">
+                    <i class="bi bi-tools"></i>
                 </div>
-                {% endif %}
+                <div class="progress-line {% if status_index >= 2 %}active{% endif %}"></div>
+                <div
+                    class="progress-step {% if status_index >= 2 %}completed{% elif status_index == 1 %}active{% endif %}">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div class="progress-line {% if status_index >= 3 %}active{% endif %}"></div>
+                <div
+                    class="progress-step {% if status_index >= 3 %}completed{% elif status_index == 2 %}active{% endif %}">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                {% endwith %}
             </div>
-
-            {% if order.notes %}
-            <div class="row mt-4">
-                <div class="col-12">
-                    <h5>Notas</h5>
-                    <p class="mb-0">{{ order.notes|linebreaks }}</p>
-                </div>
+            {% if order.estimated_delivery %}
+            <div class="text-center mt-3">
+                <p class="text-muted mb-0">
+                    Entrega estimada: {{ order.estimated_delivery|date:"d/m/Y H:i" }}
+                </p>
             </div>
             {% endif %}
+        </div>
+    </div>
+    <!-- Modal para actualizar estado -->
+    <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Actualizar Estado del Pedido</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'order_update_status' order.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Estado Actual:</label>
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-{{ order.status|status_badge }} me-2">
+                                    {{ order.get_status_display }}
+                                </span>
+                                <small class="text-muted">
+                                    Última actualización: {{ order.updated_at|date:"d/m/Y H:i" }}
+                                </small>
+                            </div>
+                            <label class="form-label">Nuevo Estado:</label>
+                            <select name="status" class="form-select">
+                                {% for value, label in order_status_choices %}
+                                <option value="{{ value }}" {% if order.status==value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-            <div class="row mt-4">
-                <div class="col-12">
-                    <a href="{% url 'home' %}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left me-2"></i>Volver
-                    </a>
-                    
-                    {% if user.is_staff %}
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
-                        <i class="bi bi-pencil me-2"></i>Editar Estado
-                    </button>
+    <!-- Información del cliente -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Información del Cliente</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Cliente:</dt>
+                        <dd class="col-sm-8">{{ order.customer.get_full_name }}</dd>
+
+                        <dt class="col-sm-4">Tipo:</dt>
+                        <dd class="col-sm-8">{{ order.get_customer_type_display }}</dd>
+
+                        {% if order.carpentry_business %}
+                        <dt class="col-sm-4">Negocio:</dt>
+                        <dd class="col-sm-8">{{ order.carpentry_business }}</dd>
+                        {% endif %}
+
+                        {% if order.phone %}
+                        <dt class="col-sm-4">Teléfono:</dt>
+                        <dd class="col-sm-8">{{ order.phone }}</dd>
+                        {% endif %}
+
+                        {% if order.address %}
+                        <dt class="col-sm-4">Dirección:</dt>
+                        <dd class="col-sm-8">{{ order.address }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Detalles del Pedido</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.notes %}
+                    <h6>Notas:</h6>
+                    <p>{{ order.notes }}</p>
+                    {% endif %}
+
+                    {% if order.image %}
+                    <h6>Imagen adjunta:</h6>
+                    <img src="{{ order.image.url }}" alt="Medidas" class="img-fluid rounded">
                     {% endif %}
                 </div>
             </div>
-            
-            <!-- Modal para actualizar estado -->
-            {% if user.is_staff %}
-            <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Actualizar Estado del Pedido</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="post" action="{% url 'order_update_status' order.id %}">
-                            {% csrf_token %}
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label class="form-label">Nuevo Estado</label>
-                                    <select name="status" class="form-select">
-                                        {% for value, label in order.STATUS_CHOICES %}
-                                        <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>
-                                            {{ label }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+        </div>
+    </div>
+
+    <!-- Medidas -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Medidas</h5>
+                <h5 class="mb-0 text-primary">Total: {{ order.total_meters|floatformat:2 }} m²</h5>
             </div>
-            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover measurement-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Largo (m)</th>
+                            <th>Ancho (m)</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal (m²)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for measurement in order.measurements %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ measurement.largo }}</td>
+                            <td>{{ measurement.ancho }}</td>
+                            <td>{{ measurement.cantidad }}</td>
+                            <td>{{ measurement|calculate_area|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No hay medidas registradas</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="d-flex justify-content-between mt-4">
+        <a href="{% url 'home' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver
+        </a>
+        {% if user.is_staff %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+            <i class="bi bi-pencil me-2"></i>Actualizar Estado
+        </button>
+        {% endif %}
+    </div>
+</div>
+<!-- Historial de estados -->
+<div class="card mt-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Historial de Estados</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th>Actualizado por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for history in order.status_history.all %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-{{ history.status|status_badge }}">
+                                {{ history.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ history.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>{{ history.created_by.get_full_name|default:"Sistema" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center">No hay historial de estados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

@@ -1,0 +1,144 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <!-- Encabezado -->
+    <div class="welcome-banner mb-4">
+        <h1 class="display-5 fw-bold mb-0">Control de Inventario</h1>
+        <p class="lead mb-0">Monitoreo y análisis de productos</p>
+    </div>
+
+    <!-- Alertas -->
+    <div class="row g-4 mb-4">
+        <!-- Productos sin rotación -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h5 class="mb-0 text-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Productos sin Rotación (60+ días)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Stock</th>
+                                    <th>Días sin movimiento</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in stale_products %}
+                                <tr>
+                                    <td>{{ product }}</td>
+                                    <td>{{ product.stock }}</td>
+                                    <td>{{ product.days_without_movement }}</td>
+                                    <td>
+                                        <a href="{% url 'board_edit' product.id %}" 
+                                           class="btn btn-sm btn-warning">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        No hay productos sin rotación
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock bajo -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-danger bg-opacity-10">
+                    <h5 class="mb-0 text-danger">
+                        <i class="bi bi-arrow-down-circle me-2"></i>
+                        Productos con Stock Bajo
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Stock Actual</th>
+                                    <th>Stock Mínimo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in low_stock_products %}
+                                <tr>
+                                    <td>{{ product }}</td>
+                                    <td>{{ product.stock }}</td>
+                                    <td>{{ product.minimum_stock }}</td>
+                                    <td>
+                                        <a href="{% url 'board_edit' product.id %}" 
+                                           class="btn btn-sm btn-danger">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        No hay productos con stock bajo
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas por Color -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Análisis por Color</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Color</th>
+                            <th>Total Productos</th>
+                            <th>Stock Total</th>
+                            <th>Promedio días sin movimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in color_stats %}
+                        <tr>
+                            <td>{{ stat.color__name }}</td>
+                            <td>{{ stat.total_products }}</td>
+                            <td>{{ stat.total_stock }}</td>
+                            <td>{{ stat.avg_days_without_movement|floatformat:0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

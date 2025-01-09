@@ -14,12 +14,24 @@
 
     <div class="card">
         <div class="card-body">
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" id="orderForm">
                 {% csrf_token %}
                 
                 <div class="row">
                     <div class="col-md-6">
                         {{ form.customer_type|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6 carpentry-fields" style="display: none;">
+                        {{ form.carpentry_business|as_crispy_field }}
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        {{ form.phone|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.address|as_crispy_field }}
                     </div>
                 </div>
 
@@ -31,7 +43,7 @@
 
                 <div class="row mt-3">
                     <div class="col-12">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label class="form-label">{{ form.image.label }}</label>
                             <div class="custom-file">
                                 {{ form.image }}
@@ -44,8 +56,11 @@
                 </div>
 
                 <div class="d-grid gap-2 mt-4">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" name="save_only">
                         <i class="bi bi-save me-2"></i>Guardar Pedido
+                    </button>
+                    <button type="submit" class="btn btn-success" name="measurements">
+                        <i class="bi bi-rulers me-2"></i>Guardar y Agregar Medidas
                     </button>
                     <a href="{% url 'home' %}" class="btn btn-secondary">
                         <i class="bi bi-x-circle me-2"></i>Cancelar
@@ -55,4 +70,24 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const customerTypeSelect = document.querySelector('[name="customer_type"]');
+    const carpentryFields = document.querySelector('.carpentry-fields');
+    
+    function toggleCarpentryFields() {
+        if (customerTypeSelect.value === 'carpenter') {
+            carpentryFields.style.display = 'block';
+        } else {
+            carpentryFields.style.display = 'none';
+        }
+    }
+    
+    customerTypeSelect.addEventListener('change', toggleCarpentryFields);
+    toggleCarpentryFields();
+});
+</script>
 {% endblock %}

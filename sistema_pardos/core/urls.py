@@ -9,6 +9,8 @@ urlpatterns = [
     path('products/', views.products, name='products'),
     path('logout/', views.exit, name='exit'),
     path('register/', views.register, name='register'),
+    path('inventory/dashboard/', views.inventory_dashboard, name='inventory_dashboard'),
+    path('production/dashboard/', views.production_dashboard, name='production_dashboard'),
     
     # Gestión de Materiales
     path('materials/', views.material_list, name='material_list'),

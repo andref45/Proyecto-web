@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2cm;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reporte de Producción</h1>
+    <p>Período: {{ start_date|date:"d/m/Y" }} - {{ end_date|date:"d/m/Y" }}</p>
+    
+    <h2>Resumen</h2>
+    <table>
+        <tr>
+            <th>Total Metros</th>
+            <td>{{ stats.total_meters|floatformat:2 }}m</td>
+        </tr>
+        <tr>
+            <th>Total Piezas</th>
+            <td>{{ stats.total_pieces }}</td>
+        </tr>
+        <tr>
+            <th>Total Cantos</th>
+            <td>{{ stats.total_edges|floatformat:2 }}m</td>
+        </tr>
+        <tr>
+            <th>Desperdicio Promedio</th>
+            <td>{{ stats.avg_waste|floatformat:2 }}%</td>
+        </tr>
+    </table>
+
+    <h2>Producción por Operador</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Operador</th>
+                <th>Metros</th>
+                <th>Piezas</th>
+                <th>Cantos</th>
+                <th>Desperdicio</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prod in operator_production %}
+            <tr>
+                <td>{{ prod.operator__first_name }} {{ prod.operator__last_name }}</td>
+                <td>{{ prod.total_meters|floatformat:2 }}m</td>
+                <td>{{ prod.total_pieces }}</td>
+                <td>{{ prod.total_edges|floatformat:2 }}m</td>
+                <td>{{ prod.avg_waste|floatformat:2 }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
