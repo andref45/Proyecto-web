@@ -11,6 +11,14 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('inventory/dashboard/', views.inventory_dashboard, name='inventory_dashboard'),
     path('production/dashboard/', views.production_dashboard, name='production_dashboard'),
+    path('reports/board-rotation/', views.board_rotation_report, name='board_rotation_report'),
+    path('production/efficiency/', views.production_efficiency, name='production_efficiency'),
+    path('inventory/movement-history/<int:board_id>/', views.material_movement_history, name='material_movement_history'),
+    path('inventory/low-stock-alert/', views.low_stock_alert, name='low_stock_alert'),
+    path('dashboard/realtime/', views.dashboard_realtime, name='dashboard_realtime'),
+    path('alerts/update/', views.update_alerts, name='update_alerts'),
+    path('dashboard/update-data/', views.update_dashboard_data, name='update_dashboard_data'),
+    path('operator-metrics/', views.operator_metrics, name='operator_metrics'),
     
     # Gestión de Materiales
     path('materials/', views.material_list, name='material_list'),

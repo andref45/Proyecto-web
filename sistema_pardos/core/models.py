@@ -2,9 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from django.utils import timezone
 from django.db import transaction
-
+from django.db.models import Sum, F, Count
 
 
 class MaterialType(models.Model):
@@ -244,11 +245,26 @@ class Order(models.Model):
         ('customer', 'Cliente Final'),
     ]
 
+    # Campos básicos
     customer = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Cliente")
     customer_type = models.CharField(max_length=20, choices=CUSTOMER_TYPE_CHOICES, verbose_name="Tipo de Cliente")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Estado")
+    
+    # Campos de contacto
+    carpentry_business = models.CharField(max_length=200, blank=True, verbose_name="Nombre del Negocio")
+    phone = models.CharField(max_length=20, blank=True, verbose_name="Teléfono")
+    address = models.TextField(blank=True, verbose_name="Dirección")
+    
+    # Campos de contenido
     image = models.ImageField(upload_to='orders/', null=True, blank=True, verbose_name="Imagen de Medidas")
     notes = models.TextField(blank=True, verbose_name="Notas")
+    measurements = models.JSONField(null=True, blank=True, verbose_name="Medidas")
+    
+    # Campos calculados
+    total_meters = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Total Metros")
+    estimated_delivery = models.DateTimeField(null=True, blank=True, verbose_name="Entrega Estimada")
+    
+    # Campos de tiempo
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
 
@@ -259,46 +275,78 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Pedido #{self.id} - {self.customer.get_full_name()}"
-    carpentry_business = models.CharField(
-        max_length=200, 
-        blank=True,
-        verbose_name="Nombre del Negocio"
-    )
-    phone = models.CharField(
-        max_length=20,
-        blank=True,
-        verbose_name="Teléfono"
-    )
-    address = models.TextField(
-        blank=True,
-        verbose_name="Dirección"
-    )
-    
-    # Campos de medidas
-    measurements = models.JSONField(
-        null=True,
-        blank=True,
-        verbose_name="Medidas"
-    )
-    total_meters = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Total Metros"
-    )
-    estimated_delivery = models.DateTimeField(
-        null=True,
-        blank=True,
-        verbose_name="Entrega Estimada"
-    )
 
     def calculate_total_meters(self):
         """Calcula el total de metros basado en las medidas"""
         if self.measurements:
-            pass
+            total = 0
+            for item in self.measurements:
+                largo = float(item.get('largo', 0))
+                ancho = float(item.get('ancho', 0))
+                cantidad = int(item.get('cantidad', 0))
+                total += (largo * ancho * cantidad)
+            return round(total, 2)
         return 0
+
+    # En models.py, actualiza el método calculate_delivery_time en la clase Order
+def calculate_delivery_time(self):
+    """Calcula el tiempo estimado de entrega basado en medidas y carga actual"""
+    if not self.measurements:
+        return None
+
+    # Calcular metros totales
+    total_meters = self.calculate_total_meters()
     
+    # Factores base actualizados
+    BASE_SPEED = 20  # metros por hora
+    SETUP_TIME = 0.5  # horas
+    MIN_TIME = 1  # hora mínima
+    
+    # Factores de complejidad
+    piece_count = sum(int(m.get('cantidad', 0)) for m in self.measurements)
+    complexity_factor = 1.2 if piece_count > 10 else 1
+    
+    # Obtener órdenes en proceso y calcular carga
+    current_orders = Order.objects.filter(
+        status__in=['processing', 'cutting'],
+        created_at__date=timezone.now().date()
+    ).exclude(id=self.id)
+    
+    workload = current_orders.aggregate(
+        total=Sum('total_meters')
+    )['total'] or 0
+    
+    # Ajustar tiempo base según factores
+    base_hours = max((total_meters / BASE_SPEED) + SETUP_TIME, MIN_TIME)
+    workload_factor = 1 + (workload / 1000)  # Aumenta tiempo según carga
+    
+    estimated_hours = base_hours * complexity_factor * workload_factor
+    
+    return timezone.now() + timedelta(hours=estimated_hours)
+
+    def save(self, *args, **kwargs):
+        # Actualizar metros totales
+        self.total_meters = self.calculate_total_meters()
+        
+        # Actualizar tiempo estimado de entrega
+        if not self.estimated_delivery:
+            self.estimated_delivery = self.calculate_delivery_time()
+
+        # Manejar historial de estados
+        if not self.pk or (
+            self.pk and 
+            Order.objects.filter(pk=self.pk).exists() and 
+            Order.objects.get(pk=self.pk).status != self.status
+        ):
+            def save_history():
+                OrderStatusHistory.objects.create(
+                    order=self,
+                    status=self.status,
+                    created_by=getattr(self, '_current_user', None)
+                )
+            transaction.on_commit(save_history)
+        
+        super().save(*args, **kwargs)
 
 def calculate_total_meters(self):
     """Calcula el total de metros basado en las medidas"""
@@ -349,3 +397,105 @@ class OrderStatusHistory(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+
+
+class StockAlert(models.Model):
+    """Modelo para alertas de inventario"""
+    ALERT_TYPES = [
+        ('low_stock', 'Stock Bajo'),
+        ('no_movement', 'Sin Movimiento'),
+        ('high_demand', 'Alta Demanda')
+    ]
+    
+    board = models.ForeignKey(
+        Board,
+        on_delete=models.CASCADE,
+        verbose_name="Tablero"
+    )
+    alert_type = models.CharField(
+        max_length=20,
+        choices=ALERT_TYPES,
+        verbose_name="Tipo de Alerta"
+    )
+    message = models.TextField(verbose_name="Mensaje")
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de Creación"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Activa"
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Alerta de Stock"
+        verbose_name_plural = "Alertas de Stock"
+
+    @classmethod
+    def create_alerts(cls):
+        """Genera alertas automáticamente basadas en las condiciones del inventario"""
+        # Usar now() con zona horaria
+        today = timezone.now()
+        today_start = timezone.make_aware(datetime.combine(today.date(), datetime.min.time()))
+        
+        # Limpiar alertas antiguas
+        cls.objects.filter(
+            created_at__lt=today_start - timedelta(days=7)
+        ).delete()
+        
+        # Alertas de stock bajo
+        low_stock_boards = Board.objects.filter(
+            is_active=True,
+            stock__lte=F('minimum_stock')
+        )
+        for board in low_stock_boards:
+            cls.objects.get_or_create(
+                board=board,
+                alert_type='low_stock',
+                is_active=True,
+                defaults={
+                    'message': f'Stock bajo: {board.stock} unidades (mínimo: {board.minimum_stock})'
+                }
+            )
+
+        # Alertas de inactividad
+        no_movement_boards = Board.objects.filter(
+            is_active=True,
+            last_movement_date__lte=today.date() - timedelta(days=60)
+        )
+        for board in no_movement_boards:
+            cls.objects.get_or_create(
+                board=board,
+                alert_type='no_movement',
+                is_active=True,
+                defaults={
+                    'message': f'Sin movimiento por {board.days_without_movement} días'
+                }
+            )
+
+        # Alertas de alta demanda
+        week_threshold = 10
+        high_demand_boards = Board.objects.filter(
+            inventory__date__gte=today_start - timedelta(days=7)
+        ).annotate(
+            movement_count=Count('inventory')
+        ).filter(
+            movement_count__gte=week_threshold
+        )
+        
+        for board in high_demand_boards:
+            cls.objects.get_or_create(
+                board=board,
+                alert_type='high_demand',
+                is_active=True,
+                defaults={
+                    'message': f'Alta demanda detectada en los últimos 7 días'
+                }
+            )
+
+    def __str__(self):
+        return f"{self.get_alert_type_display()} - {self.board}"
+

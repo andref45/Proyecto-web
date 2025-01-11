@@ -33,12 +33,12 @@
             <form method="get" class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Fecha Inicio</label>
-                    <input type="date" name="start_date" class="form-control datepicker"
+                    <input title="b" type="date" name="start_date" class="form-control datepicker"
                         value="{{ start_date|date:'Y-m-d' }}">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Fecha Fin</label>
-                    <input type="date" name="end_date" class="form-control datepicker"
+                    <input title="b" type="date" name="end_date" class="form-control datepicker"
                         value="{{ end_date|date:'Y-m-d' }}">
                 </div>
                 <div class="col-md-4">
@@ -105,28 +105,30 @@
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: {{ daily_production_dates| safe }},
-        datasets: [{
-            label: 'Metros Cortados',
-            data: {{ daily_production_meters| safe }},
-        borderColor: '#4b6cb7',
-        tension: 0.1
-            }]
-        },
-        options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top',
+                labels: JSON.parse('{{ chart_dates|safe }}'),
+                datasets: [{
+                    label: 'Metros Cortados',
+                    data: JSON.parse('{{ chart_meters|safe }}'),
+                    borderColor: '#4b6cb7',
+                    backgroundColor: 'rgba(75, 108, 183, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
             }
-        },
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
-    }
+        }); 
     });
-});
 </script>
 {% endblock %}

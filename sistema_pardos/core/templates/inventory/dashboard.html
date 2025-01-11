@@ -42,7 +42,7 @@
                                     <td>{{ product.stock }}</td>
                                     <td>{{ product.days_without_movement }}</td>
                                     <td>
-                                        <a href="{% url 'board_edit' product.id %}" 
+                                        <a title="b" href="{% url 'board_edit' product.id %}" 
                                            class="btn btn-sm btn-warning">
                                             <i class="bi bi-pencil"></i>
                                         </a>
@@ -89,7 +89,7 @@
                                     <td>{{ product.stock }}</td>
                                     <td>{{ product.minimum_stock }}</td>
                                     <td>
-                                        <a href="{% url 'board_edit' product.id %}" 
+                                        <a title="b" href="{% url 'board_edit' product.id %}" 
                                            class="btn btn-sm btn-danger">
                                             <i class="bi bi-pencil"></i>
                                         </a>

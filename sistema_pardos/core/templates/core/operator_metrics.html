@@ -1,0 +1,113 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container">
+    <!-- Selector de rango -->
+    <div class="mb-4">
+        <select title="b" id="timeRange" class="form-select">
+            <option value="day">Hoy</option>
+            <option value="week">Esta Semana</option>
+            <option value="month">Este Mes</option>
+        </select>
+    </div>
+
+    <!-- Métricas por operador -->
+    <div class="row mb-4">
+        {% for operator in operators %}
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ operator.operator__first_name }}</h5>
+                    <p>Metros Cortados: {{ operator.total_meters|floatformat:2 }}m</p>
+                    <p>Piezas: {{ operator.total_pieces }}</p>
+                    <p>Eficiencia: {{ operator.avg_efficiency|floatformat:1 }}%</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Gráfico de producción -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Producción por Operador</h5>
+            <canvas id="productionChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Gráfico de eficiencia -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Comparativa de Eficiencia</h5>
+            <canvas id="efficiencyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializar gráficos
+        const productionCtx = document.getElementById('productionChart').getContext('2d');
+        const efficiencyCtx = document.getElementById('efficiencyChart').getContext('2d');
+
+        // Configurar gráfico de producción
+        const productionChart = new Chart(productionCtx, {
+            type: 'line',
+            data: {
+                labels: JSON.parse('{{ dates|escapejs }}'),
+                datasets: JSON.parse('{{ production_datasets|escapejs }}')
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Configurar gráfico de eficiencia
+        const efficiencyChart = new Chart(efficiencyCtx, {
+            type: 'bar',
+            data: {
+                labels: JSON.parse('{{ operator_names|escapejs }}'),
+                datasets: [{
+                    label: 'Eficiencia',
+                    data: JSON.parse('{{ efficiency_data|escapejs }}'),
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        // Manejar cambios en el rango de tiempo
+        document.getElementById('timeRange').addEventListener('change', function (e) {
+            fetch(`/operator-metrics/?range=${e.target.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Actualizar datos del gráfico de producción
+                    productionChart.data.labels = data.dates;
+                    productionChart.data.datasets = data.production_datasets;
+                    productionChart.update();
+
+                    // Actualizar datos del gráfico de eficiencia
+                    efficiencyChart.data.labels = data.operator_names;
+                    efficiencyChart.data.datasets[0].data = data.efficiency_data;
+                    efficiencyChart.update();
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    });
+</script>
+{% endblock %}

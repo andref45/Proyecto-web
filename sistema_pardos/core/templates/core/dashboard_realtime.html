@@ -1,0 +1,121 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container">
+    <!-- Métricas principales -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Producción Total</h5>
+                    <h2 id="total-meters">{{ initial_data.production.total_meters|default:"0" }} m</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Piezas Cortadas</h5>
+                    <h2 id="total-pieces">{{ initial_data.production.total_pieces|default:"0" }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Desperdicio Promedio</h5>
+                    <h2 id="avg-waste">{{ initial_data.production.avg_waste|default:"0" }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Producción por Hora</h5>
+                    <canvas id="productionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Alertas Activas</h5>
+                    <div id="alerts-container">
+                        {% for alert in initial_data.alerts %}
+                        <div class="alert alert-warning">
+                            {{ alert.message }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicialización del gráfico
+    const ctx = document.getElementById('productionChart').getContext('2d');
+    const productionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            // Usar JSON.parse para convertir la cadena JSON en objeto JavaScript
+            labels: JSON.parse('{{ initial_data.production_history|escapejs }}').map(item => item.hour),
+            datasets: [{
+                label: 'Metros Cortados',
+                data: JSON.parse('{{ initial_data.production_history|escapejs }}').map(item => item.meters),
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Función para actualizar datos
+    function updateDashboard() {
+        fetch('/dashboard/update-data/')
+            .then(response => response.json())
+            .then(data => {
+                // Actualizar métricas
+                document.getElementById('total-meters').textContent =
+                    `${data.production.total_meters || 0} m`;
+                document.getElementById('total-pieces').textContent =
+                    data.production.total_pieces || 0;
+                document.getElementById('avg-waste').textContent =
+                    `${data.production.avg_waste || 0}%`;
+
+                // Actualizar alertas
+                const alertsContainer = document.getElementById('alerts-container');
+                alertsContainer.innerHTML = data.alerts.map(alert => `
+                    <div class="alert alert-warning">
+                        ${alert.message}
+                    </div>
+                `).join('');
+
+                // Actualizar gráfico
+                productionChart.data.datasets[0].data = data.production_history.map(item => item.meters);
+                productionChart.data.labels = data.production_history.map(item => item.hour);
+                productionChart.update();
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Actualizar cada 30 segundos
+    setInterval(updateDashboard, 30000);
+</script>
+{% endblock %}

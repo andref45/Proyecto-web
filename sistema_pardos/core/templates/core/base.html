@@ -5,19 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Pardos CL</title>
-    
+
     <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
-    
+
     <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     {% load static %}
+    {% load stock_alerts %}
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -94,6 +96,23 @@
             </div>
         </div>
     </nav>
+
+    <div class="container mt-3">
+        {% if perms.core.view_stockalert %}
+        {% get_stock_alerts as alerts %}
+        {% if alerts %}
+        <div class="alerts-container">
+            {% for alert in alerts %}
+            <div class="alert {% if alert.alert_type == 'low_stock' %}alert-danger{% else %}alert-warning{% endif %} alert-dismissible fade show"
+                role="alert">
+                <strong>{{ alert.get_alert_type_display }}:</strong> {{ alert.message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
 
     <div class="container">
         {% if messages %}

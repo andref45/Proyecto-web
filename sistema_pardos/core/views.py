@@ -1,13 +1,14 @@
 from dataclasses import fields
 import json
 from tkinter.font import Font
-from django.forms import DurationField
+from django.forms import DurationField, FloatField
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required 
 from django.contrib.auth import logout
 from django.urls import reverse
 from openpyxl import Workbook
 from prompt_toolkit import HTML
+from sqlalchemy import Cast
 from .forms import CustomUserCreationForm
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
@@ -34,6 +35,8 @@ from django.contrib import messages
 from .models import Order
 from .forms import OrderForm
 from django.template.loader import get_template
+from openpyxl.styles import PatternFill
+from django.db.models.functions import Greatest, Extract
 
 
 @login_required
@@ -513,7 +516,7 @@ def order_measurements(request, pk):
             messages.success(request, 'Medidas guardadas exitosamente.')
             return JsonResponse({
                 'success': True,
-                'redirect_url': reverse('home')  # Cambiar a home en lugar de order_detail
+                'redirect_url': reverse('home')  
             })
             
         except json.JSONDecodeError:
@@ -627,9 +630,9 @@ def production_dashboard(request):
 
 @login_required
 def production_reports(request):
-    # Obtener fechas del filtro
+    # Aquí va la lógica de la vista que añadimos antes
     end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=30)  # Por defecto último mes
+    start_date = end_date - timedelta(days=30)
     
     if request.GET.get('start_date'):
         start_date = datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d').date()
@@ -639,47 +642,67 @@ def production_reports(request):
     # Obtener registros de producción
     productions = ProductionRecord.objects.filter(
         date__range=[start_date, end_date]
-    ).select_related('operator')
+    )
+
+    # Crear datos para el gráfico manualmente
+    daily_data = {}
+    for prod in productions:
+        date_str = prod.date.strftime('%d/%m')
+        if date_str not in daily_data:
+            daily_data[date_str] = {
+                'total_meters': 0,
+                'total_pieces': 0
+            }
+        daily_data[date_str]['total_meters'] += prod.meters_cut
+        daily_data[date_str]['total_pieces'] += prod.pieces_cut
+
+    # Convertir a listas ordenadas para el gráfico
+    dates = sorted(daily_data.keys())
+    meters = [daily_data[date]['total_meters'] for date in dates]
 
     # Estadísticas generales
-    stats = productions.aggregate(
-        total_meters=Sum('meters_cut'),
-        total_pieces=Sum('pieces_cut'),
-        total_edges=Sum('edges_applied'),
-        avg_waste=Avg('waste_percentage')
-    )
+    stats = {
+        'total_meters': sum(prod.meters_cut for prod in productions),
+        'total_pieces': sum(prod.pieces_cut for prod in productions),
+        'total_edges': sum(prod.edges_applied or 0 for prod in productions),
+        'avg_waste': sum(prod.waste_percentage for prod in productions) / len(productions) if productions else 0
+    }
 
     # Producción por operador
-    operator_production = productions.values(
-        'operator__username',
-        'operator__first_name',
-        'operator__last_name'
-    ).annotate(
-        total_meters=Sum('meters_cut'),
-        total_pieces=Sum('pieces_cut'),
-        total_edges=Sum('edges_applied'),
-        avg_waste=Avg('waste_percentage')
-    )
+    operator_stats = {}
+    for prod in productions:
+        op_name = f"{prod.operator.first_name} {prod.operator.last_name}"
+        if op_name not in operator_stats:
+            operator_stats[op_name] = {
+                'total_meters': 0,
+                'total_pieces': 0,
+                'total_edges': 0,
+                'waste_values': []
+            }
+        operator_stats[op_name]['total_meters'] += prod.meters_cut
+        operator_stats[op_name]['total_pieces'] += prod.pieces_cut
+        operator_stats[op_name]['total_edges'] += (prod.edges_applied or 0)
+        operator_stats[op_name]['waste_values'].append(prod.waste_percentage)
 
-    # Producción diaria
-    daily_production = productions.values('date').annotate(
-        total_meters=Sum('meters_cut'),
-        total_pieces=Sum('pieces_cut')
-    ).order_by('date')
+    operator_production = [
+        {
+            'name': name,
+            'total_meters': stats['total_meters'],
+            'total_pieces': stats['total_pieces'],
+            'total_edges': stats['total_edges'],
+            'avg_waste': sum(stats['waste_values']) / len(stats['waste_values']) if stats['waste_values'] else 0
+        }
+        for name, stats in operator_stats.items()
+    ]
 
     context = {
         'start_date': start_date,
         'end_date': end_date,
         'stats': stats,
         'operator_production': operator_production,
-        'daily_production': daily_production,
+        'chart_dates': json.dumps(dates),
+        'chart_meters': json.dumps(meters)
     }
-
-    # Manejo de exportación
-    if request.GET.get('export') == 'excel':
-        return export_production_excel(request, context)
-    elif request.GET.get('export') == 'pdf':
-        return export_production_pdf(request, context)
 
     return render(request, 'reports/production.html', context)
 
@@ -730,3 +753,377 @@ def export_production_pdf(request, context):
     
     HTML(string=html).write_pdf(response)
     return response
+
+
+@login_required
+def board_rotation_report(request):
+    """Vista para el reporte de rotación de productos"""
+    boards = Board.objects.filter(is_active=True).annotate(
+        days_inactive=timezone.now().date() - F('last_movement_date')
+    ).order_by('-days_inactive')
+
+    context = {
+        'boards': boards,
+        'no_movement_60': boards.filter(days_inactive__gte=60).count(),
+        'no_movement_30': boards.filter(days_inactive__gte=30, days_inactive__lt=60).count(),
+        'no_movement_15': boards.filter(days_inactive__gte=15, days_inactive__lt=30).count(),
+    }
+    return render(request, 'reports/board_rotation.html', context)
+
+@login_required
+def production_efficiency(request):
+    """Vista para el análisis de eficiencia de producción"""
+    today = timezone.now().date()
+    start_date = today - timedelta(days=30)
+    
+    records = ProductionRecord.objects.filter(
+        date__range=[start_date, today]
+    ).select_related('operator')
+
+    # Análisis por operador
+    operator_stats = records.values(
+        'operator__username'
+    ).annotate(
+        total_hours=Sum(
+            ExpressionWrapper(
+                F('end_time') - F('start_time'),
+                output_field=DurationField()
+            )
+        ),
+        total_meters=Sum('meters_cut'),
+        total_pieces=Sum('pieces_cut'),
+        avg_waste=Avg('waste_percentage')
+    )
+
+    context = {
+        'operator_stats': operator_stats,
+        'start_date': start_date,
+        'end_date': today,
+    }
+    return render(request, 'production/efficiency.html', context)
+
+@login_required
+def material_movement_history(request, board_id):
+    """Vista para el historial de movimientos de un material"""
+    board = get_object_or_404(Board, id=board_id)
+    movements = Inventory.objects.filter(
+        board=board
+    ).order_by('-date')
+
+    context = {
+        'board': board,
+        'movements': movements,
+    }
+    return render(request, 'inventory/movement_history.html', context)
+
+@login_required
+def low_stock_alert(request):
+    """Vista para alertas de stock bajo"""
+    low_stock_boards = Board.objects.filter(
+        is_active=True,
+        stock__lte=F('minimum_stock')
+    ).order_by('stock')
+
+    context = {
+        'boards': low_stock_boards,
+        'total_alerts': low_stock_boards.count()
+    }
+    return render(request, 'inventory/low_stock_alert.html', context)
+
+
+@login_required
+def realtime_dashboard(request):
+    # Obtener datos actuales
+    current_data = {
+        'production': ProductionRecord.objects.filter(
+            date=timezone.now().date()
+        ).aggregate(
+            total_meters=Sum('meters_cut'),
+            total_pieces=Sum('pieces_cut'),
+            total_edges=Sum('edges_applied'),
+            avg_waste=Avg('waste_percentage')
+        ),
+        'operators': ProductionRecord.objects.filter(
+            date=timezone.now().date()
+        ).values(
+            'operator__username',
+            'operator__first_name'
+        ).annotate(
+            total_meters=Sum('meters_cut'),
+            total_pieces=Sum('pieces_cut'),
+            efficiency=ExpressionWrapper(
+                Sum('meters_cut') * 100.0 / Cast('pieces_cut', FloatField()),
+                output_field=FloatField()
+            )
+        ),
+        'alerts': StockAlert.objects.filter(is_active=True)[:5]
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse(current_data)
+    
+    return render(request, 'dashboard/realtime.html', {
+        'initial_data': current_data
+    })
+
+
+from django.db.models import Sum, Avg, Count, F
+from .models import StockAlert
+
+@login_required
+def dashboard_realtime(request):
+    current_time = timezone.now()
+    start_of_day = current_time.replace(hour=0, minute=0, second=0)
+    
+    # Producción por hora
+    production_history = []
+    for hour in range(24):
+        hour_start = start_of_day + timedelta(hours=hour)
+        hour_end = hour_start + timedelta(hours=1)
+        
+        if hour_end > current_time:
+            break
+            
+        hour_production = ProductionRecord.objects.filter(
+            date=start_of_day.date(),
+            start_time__gte=hour_start.time(),
+            start_time__lt=hour_end.time()
+        ).aggregate(
+            meters=Sum('meters_cut'),
+            pieces=Sum('pieces_cut')
+        )
+        
+        production_history.append({
+            'hour': hour_start.strftime('%H:00'),
+            'meters': hour_production['meters'] or 0,
+            'pieces': hour_production['pieces'] or 0
+        })
+
+    current_data = {
+        'production': ProductionRecord.objects.filter(
+            date=current_time.date()
+        ).aggregate(
+            total_meters=Sum('meters_cut'),
+            total_pieces=Sum('pieces_cut'),
+            avg_waste=Avg('waste_percentage')
+        ),
+        'operators': ProductionRecord.objects.filter(
+            date=current_time.date()
+        ).values(
+            'operator__username',
+            'operator__first_name'
+        ).annotate(
+            total_meters=Sum('meters_cut'),
+            total_pieces=Sum('pieces_cut'),
+            efficiency=ExpressionWrapper(
+                (Sum('meters_cut') * 100.0) / Cast('pieces_cut', FloatField()),
+                output_field=FloatField()
+            )
+        ),
+        'alerts': list(StockAlert.objects.filter(
+            is_active=True
+        ).values('message', 'alert_type', 'created_at')[:5]),
+        'production_history': production_history
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse(current_data)
+    
+    return render(request, 'core/dashboard_realtime.html', {
+        'initial_data': current_data
+    })
+
+@login_required
+def update_alerts(request):
+    """Vista para generar y actualizar alertas"""
+    StockAlert.create_alerts()  # Método que creamos en el modelo
+    return JsonResponse({'success': True})
+
+# En views.py, agrega esta nueva función
+@login_required
+def update_dashboard_data(request):
+    """Endpoint para actualizar datos del dashboard vía AJAX"""
+    current_time = timezone.now()
+    
+    production_data = ProductionRecord.objects.filter(
+        date=current_time.date()
+    ).aggregate(
+        total_meters=Sum('meters_cut'),
+        total_pieces=Sum('pieces_cut'),
+        avg_waste=Avg('waste_percentage')
+    )
+    
+    # Actualizar alertas
+    StockAlert.create_alerts()
+    
+    return JsonResponse({
+        'production': production_data,
+        'alerts': list(StockAlert.objects.filter(
+            is_active=True
+        ).values('message', 'alert_type', 'created_at')[:5])
+    })
+
+
+@login_required
+def dashboard_realtime(request):
+    current_time = timezone.now()
+    start_of_day = current_time.replace(hour=0, minute=0, second=0)
+    
+    # Producción por hora
+    production_history = []
+    for hour in range(24):
+        hour_start = start_of_day + timedelta(hours=hour)
+        hour_end = hour_start + timedelta(hours=1)
+        
+        if hour_end > current_time:
+            break
+            
+        hour_production = ProductionRecord.objects.filter(
+            date=start_of_day.date(),
+            start_time__gte=hour_start.time(),
+            start_time__lt=hour_end.time()
+        ).aggregate(
+            meters=Sum('meters_cut'),
+            pieces=Sum('pieces_cut')
+        )
+        
+        production_history.append({
+            'hour': hour_start.strftime('%H:00'),
+            'meters': hour_production['meters'] or 0,
+            'pieces': hour_production['pieces'] or 0
+        })
+
+    initial_data = {
+        'production': ProductionRecord.objects.filter(
+            date=current_time.date()
+        ).aggregate(
+            total_meters=Sum('meters_cut'),
+            total_pieces=Sum('pieces_cut'),
+            avg_waste=Avg('waste_percentage')
+        ),
+        'production_history': production_history,
+        'alerts': StockAlert.objects.filter(
+            is_active=True
+        ).values('message', 'alert_type', 'created_at')[:5]
+    }
+    
+    return render(request, 'core/dashboard_realtime.html', {
+        'initial_data': initial_data
+    })
+
+@login_required
+def update_dashboard_data(request):
+    """Endpoint para actualizaciones AJAX"""
+    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+        
+    current_time = timezone.now()
+    start_of_day = current_time.replace(hour=0, minute=0, second=0)
+    
+    # Obtener datos actualizados
+    production_data = ProductionRecord.objects.filter(
+        date=current_time.date()
+    ).aggregate(
+        total_meters=Sum('meters_cut'),
+        total_pieces=Sum('pieces_cut'),
+        avg_waste=Avg('waste_percentage')
+    )
+    
+    # Actualizar alertas
+    StockAlert.create_alerts()
+    
+    return JsonResponse({
+        'production': production_data,
+        'alerts': list(StockAlert.objects.filter(
+            is_active=True
+        ).values('message', 'alert_type', 'created_at')[:5])
+    })
+
+
+@login_required
+def operator_metrics(request):
+    """Vista para mostrar métricas de operadores"""
+    # Obtener el rango de fechas seleccionado
+    time_range = request.GET.get('range', 'day')
+    today = timezone.now().date()
+    
+    # Determinar fecha inicial según el rango
+    if time_range == 'week':
+        start_date = today - timedelta(days=7)
+    elif time_range == 'month':
+        start_date = today - timedelta(days=30)
+    else:  # day
+        start_date = today
+
+    # Obtener estadísticas de operadores
+    operators = ProductionRecord.objects.filter(
+        date__range=[start_date, today]
+    ).values(
+        'operator__username',
+        'operator__first_name'
+    ).annotate(
+        total_meters=Sum('meters_cut'),
+        total_pieces=Sum('pieces_cut'),
+        avg_efficiency=100 - Avg('waste_percentage'),
+        pieces_per_hour=Cast(Sum('pieces_cut'), FloatField()) / 
+                       Greatest(Sum(
+                           Extract('end_time', 'hour') - Extract('start_time', 'hour')
+                       ), 1)
+    )
+
+    # Preparar datos para los gráficos
+    dates = []
+    production_data = []
+    current_date = start_date
+    
+    while current_date <= today:
+        dates.append(current_date.strftime('%d/%m'))
+        daily_production = ProductionRecord.objects.filter(
+            date=current_date
+        ).values(
+            'operator__username'
+        ).annotate(
+            total_meters=Sum('meters_cut')
+        )
+        
+        production_data.append({
+            'date': current_date.strftime('%d/%m'),
+            'data': {p['operator__username']: p['total_meters'] for p in daily_production}
+        })
+        current_date += timedelta(days=1)
+
+    # Preparar datasets para el gráfico de producción
+    operator_names = list(set(op['operator__username'] for op in operators))
+    production_datasets = []
+    
+    for operator in operator_names:
+        dataset = {
+            'label': operator,
+            'data': [p['data'].get(operator, 0) for p in production_data],
+            'borderColor': f'hsl({hash(operator) % 360}, 70%, 50%)',
+            'fill': False
+        }
+        production_datasets.append(dataset)
+
+    # Preparar datos de eficiencia
+    efficiency_data = [op['avg_efficiency'] for op in operators]
+
+    # Si es una solicitud AJAX, devolver JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'dates': dates,
+            'production_datasets': production_datasets,
+            'operator_names': operator_names,
+            'efficiency_data': efficiency_data
+        })
+
+    # Para la carga inicial de la página, pasar contexto al template
+    context = {
+        'operators': operators,
+        'dates': json.dumps(dates),
+        'production_datasets': json.dumps(production_datasets),
+        'operator_names': json.dumps(operator_names),
+        'efficiency_data': json.dumps(efficiency_data)
+    }
+    
+    return render(request, 'core/operator_metrics.html', context)
