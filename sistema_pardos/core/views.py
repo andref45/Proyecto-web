@@ -1,6 +1,8 @@
 from dataclasses import fields
+from functools import cache
 import json
 from tkinter.font import Font
+from arrow import now
 from django.forms import DurationField, FloatField
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required 
@@ -16,7 +18,7 @@ from django.contrib.auth.models import User
 from django.db.models import ExpressionWrapper
 from django.http import JsonResponse
 from decimal import Decimal
-from django.db.models import Sum, F, Count
+from django.db.models import Sum, F, Count, Q
 from datetime import datetime, timedelta
 from .models import MaterialType, Color, Board, Inventory
 from .forms import MaterialTypeForm, ColorForm, BoardForm, InventoryMovementForm
@@ -37,6 +39,7 @@ from .forms import OrderForm
 from django.template.loader import get_template
 from openpyxl.styles import PatternFill
 from django.db.models.functions import Greatest, Extract
+from django.db import transaction
 
 
 @login_required
@@ -437,11 +440,13 @@ def order_create(request):
         if form.is_valid():
             order = form.save(commit=False)
             order.customer = request.user
+            order._current_user = request.user  # Agregar esta línea
             order.save()
+            
             messages.success(request, 'Pedido creado exitosamente.')
             if 'measurements' in request.POST:
                 return redirect('order_measurements', pk=order.pk)
-            return redirect('home')  # Redirige al inicio por defecto
+            return redirect('order_detail', pk=order.pk)  # Redirigir al detalle del pedido
     else:
         form = OrderForm()
     
@@ -476,6 +481,8 @@ def order_update_status(request, pk):
         new_status = request.POST.get('status')
         if new_status in dict(Order.STATUS_CHOICES):
             old_status = order.get_status_display()
+            # Asignar el usuario actual
+            order._current_user = request.user
             order.status = new_status
             order.save()
             
@@ -489,44 +496,36 @@ def order_update_status(request, pk):
     return redirect('order_detail', pk=pk)
 
 
+# En views.py
 @login_required
 def order_measurements(request, pk):
-    order = get_object_or_404(Order, pk=pk)
+    order = get_object_or_404(Order.objects.select_related('customer'), pk=pk)
     
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            measurements = data.get('measurements', [])
-            
-            # Validar medidas
-            if not measurements:
-                return JsonResponse({'success': False, 'error': 'No hay medidas'})
-            
-            for measurement in measurements:
-                if not all(key in measurement for key in ['largo', 'ancho', 'cantidad']):
-                    return JsonResponse({'success': False, 'error': 'Datos incompletos'})
+            with transaction.atomic():
+                data = json.loads(request.body)
+                measurements = data.get('measurements', [])
                 
-                if measurement['largo'] <= 0 or measurement['ancho'] <= 0 or measurement['cantidad'] <= 0:
-                    return JsonResponse({'success': False, 'error': 'Valores inválidos'})
+                # Validación rápida
+                for m in measurements:
+                    if not all(0 < m.get(k, 0) <= limit for k, limit in [
+                        ('largo', 3.66), ('ancho', 2.44)
+                    ]):
+                        raise ValueError('Medidas inválidas')
+                
+                order.measurements = measurements
+                order.save()
+                
+                # Invalidar caché
+                cache.delete(f'order_details_{pk}')
+                
+                return JsonResponse({'success': True})
+                
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
             
-            # Guardar medidas
-            order.measurements = measurements
-            order.save()
-            
-            messages.success(request, 'Medidas guardadas exitosamente.')
-            return JsonResponse({
-                'success': True,
-                'redirect_url': reverse('home')  
-            })
-            
-        except json.JSONDecodeError:
-            return JsonResponse({'success': False, 'error': 'Datos inválidos'})
-    
-    return render(request, 'core/orders/measurements.html', {
-        'order': order,
-        'orderId': pk
-    })
-
+    return render(request, 'core/orders/measurements.html', {'order': order})
 
 
 @login_required
@@ -872,66 +871,32 @@ from .models import StockAlert
 
 @login_required
 def dashboard_realtime(request):
-    current_time = timezone.now()
-    start_of_day = current_time.replace(hour=0, minute=0, second=0)
+    today = timezone.now().date()
     
-    # Producción por hora
-    production_history = []
-    for hour in range(24):
-        hour_start = start_of_day + timedelta(hours=hour)
-        hour_end = hour_start + timedelta(hours=1)
-        
-        if hour_end > current_time:
-            break
-            
-        hour_production = ProductionRecord.objects.filter(
-            date=start_of_day.date(),
-            start_time__gte=hour_start.time(),
-            start_time__lt=hour_end.time()
-        ).aggregate(
-            meters=Sum('meters_cut'),
-            pieces=Sum('pieces_cut')
-        )
-        
-        production_history.append({
-            'hour': hour_start.strftime('%H:00'),
-            'meters': hour_production['meters'] or 0,
-            'pieces': hour_production['pieces'] or 0
-        })
+    # Usar select_related para reducir queries
+    recent_orders = Order.objects.select_related('customer').filter(
+        created_at__date=today
+    ).order_by('-created_at')[:5]
 
-    current_data = {
-        'production': ProductionRecord.objects.filter(
-            date=current_time.date()
-        ).aggregate(
-            total_meters=Sum('meters_cut'),
-            total_pieces=Sum('pieces_cut'),
-            avg_waste=Avg('waste_percentage')
-        ),
-        'operators': ProductionRecord.objects.filter(
-            date=current_time.date()
-        ).values(
-            'operator__username',
-            'operator__first_name'
-        ).annotate(
-            total_meters=Sum('meters_cut'),
-            total_pieces=Sum('pieces_cut'),
-            efficiency=ExpressionWrapper(
-                (Sum('meters_cut') * 100.0) / Cast('pieces_cut', FloatField()),
-                output_field=FloatField()
-            )
-        ),
-        'alerts': list(StockAlert.objects.filter(
-            is_active=True
-        ).values('message', 'alert_type', 'created_at')[:5]),
-        'production_history': production_history
+    context = {
+        'orders': recent_orders,
+        'stats': {
+            'pending_orders': Order.objects.filter(status='pending').count(),
+            'active_orders': Order.objects.filter(
+                status__in=['processing', 'cutting']
+            ).count(),
+            'completed_today': Order.objects.filter(
+                status='completed',
+                updated_at__date=today
+            ).count()
+        },
+        'alerts': StockAlert.objects.filter(is_active=True)[:5]
     }
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse(current_data)
     
-    return render(request, 'core/dashboard_realtime.html', {
-        'initial_data': current_data
-    })
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse(context)
+    
+    return render(request, 'core/dashboard.html', context)
 
 @login_required
 def update_alerts(request):
@@ -1127,3 +1092,33 @@ def operator_metrics(request):
     }
     
     return render(request, 'core/operator_metrics.html', context)
+
+
+
+@login_required
+def dashboard_data(request):
+    cache_key = f'dashboard_data_{request.user.id}'
+    data = cache.get(cache_key)
+    
+    if not data:
+        today = now().date()
+        
+        # Consulta optimizada para estadísticas
+        stats = Order.objects.filter(
+            created_at__date=today
+        ).aggregate(
+            total_today=Count('id'),
+            total_meters=Sum('total_meters'),
+            pending=Count('id', filter=Q(status='pending')),
+            processing=Count('id', filter=Q(status__in=['processing', 'cutting'])),
+            completed=Count('id', filter=Q(status='completed'))
+        )
+        
+        data = {
+            'stats': stats,
+            'last_update': now().isoformat()
+        }
+        
+        cache.set(cache_key, data, 60)  # Cache por 1 minuto
+    
+    return JsonResponse(data)

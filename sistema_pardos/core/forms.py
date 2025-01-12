@@ -249,7 +249,7 @@ class OrderForm(forms.ModelForm):
     class Meta:
         model = Order
         fields = [
-            'customer_type', 'carpentry_business', 'phone', 
+            'customer_type', 'carpentry_business', 'phone',
             'address', 'notes', 'image'
         ]
         widgets = {
@@ -257,38 +257,52 @@ class OrderForm(forms.ModelForm):
                 attrs={
                     'class': 'form-control',
                     'id': 'customerType'
-                }),
+                }
+            ),
             'carpentry_business': forms.TextInput(
                 attrs={
                     'class': 'form-control',
                     'placeholder': 'Nombre del negocio'
-                }),
+                }
+            ),
             'phone': forms.TextInput(
                 attrs={
                     'class': 'form-control',
                     'placeholder': 'Número de contacto'
-                }),
+                }
+            ),
             'address': forms.Textarea(
                 attrs={
                     'class': 'form-control',
                     'rows': 2,
                     'placeholder': 'Dirección de entrega'
-                }),
+                }
+            ),
             'notes': forms.Textarea(
                 attrs={
                     'class': 'form-control',
                     'rows': 3,
                     'placeholder': 'Notas o instrucciones especiales'
-                }),
+                }
+            ),
             'image': forms.FileInput(
                 attrs={
                     'class': 'form-control',
-                    'accept': 'image/*'
-                })
+                    'accept': 'image/jpeg,image/png',  # Cambiado de image/* a formatos específicos
+                }
+            )
+        }
+        help_texts = {
+            'customer_type': 'Seleccione el tipo de cliente',
+            'carpentry_business': 'Nombre de su negocio o empresa (si aplica)',
+            'phone': 'Número de contacto para coordinaciones',
+            'address': 'Dirección de entrega del pedido',
+            'notes': 'Instrucciones especiales o detalles adicionales del pedido',
+            'image': 'Opcional: Suba una imagen de referencia del proyecto (JPG o PNG)'
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['carpentry_business'].required = False
-        self.fields['phone'].required = False
-        self.fields['address'].required = False
+        for field in self.fields:
+            if field != 'image':
+                self.fields[field].required = False

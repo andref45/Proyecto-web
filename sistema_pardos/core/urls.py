@@ -19,6 +19,9 @@ urlpatterns = [
     path('alerts/update/', views.update_alerts, name='update_alerts'),
     path('dashboard/update-data/', views.update_dashboard_data, name='update_dashboard_data'),
     path('operator-metrics/', views.operator_metrics, name='operator_metrics'),
+    path('orders/create/', views.order_create, name='order_create'),
+    path('orders/<int:pk>/', views.order_detail, name='order_detail'),
+    path('inventory/dashboard-data/', views.dashboard_data, name='dashboard_data'),
     
     # Gestión de Materiales
     path('materials/', views.material_list, name='material_list'),

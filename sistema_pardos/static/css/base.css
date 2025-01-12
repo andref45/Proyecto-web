@@ -81,3 +81,27 @@ body {
 .card:hover {
     transform: translateY(-5px);
 }
+
+.bi-arrow-clockwise-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.btn-custom {
+    transition: all 0.3s;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #ffffff, #f5f5f5);
+    box-shadow: 5px 5px 10px #e6e6e6, -5px -5px 10px #ffffff;
+}
+
+.btn-custom:hover {
+    box-shadow: inset 5px 5px 10px #e6e6e6, inset -5px -5px 10px #ffffff;
+}

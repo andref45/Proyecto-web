@@ -87,7 +87,12 @@
     <!-- Gráfico -->
     <div class="card mb-4">
         <div class="card-header bg-white">
-            <h5 class="mb-0">Actividad Reciente</h5>
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Actividad Reciente</h5>
+                <button id="refresh-dashboard" class="btn btn-custom btn-sm">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar
+                </button>
+            </div>
         </div>
         <div class="card-body">
             <canvas id="ordersChart" height="100"></canvas>
@@ -166,6 +171,7 @@
                 </a>
             </div>
         </div>
+        
     </div>
 
     <!-- Pedidos Recientes -->
@@ -275,7 +281,6 @@
                         </label>
                         <select name="status" class="form-select">
                             {% for value, label in order_status_choices %}
-                            <!-- <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}> -->
                             <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>
                                 {{ label }}
                             </option>

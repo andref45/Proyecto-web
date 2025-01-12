@@ -1,0 +1,129 @@
+/* Container Styles */
+.login-container {
+    min-height: calc(100vh - 76px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+/* Card Styles */
+.login-card {
+    background: white;
+    border-radius: 15px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Icon Wrapper Styles */
+.login-icon-wrapper {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.login-icon-wrapper i {
+    font-size: 2rem;
+    color: white;
+}
+
+/* Button Styles */
+.btn-gradient {
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(135deg, #405aa9 0%, #131f37 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Link Styles */
+.login-card a {
+    color: #4b6cb7;
+    transition: color 0.3s ease;
+}
+
+.login-card a:hover {
+    color: #182848;
+}
+
+
+
+/* Container Styles */
+.login-container,
+.register-container {
+    min-height: calc(100vh - 76px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+/* Card Styles */
+.login-card,
+.register-card {
+    background: white;
+    border-radius: 15px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Icon Wrapper Styles */
+.login-icon-wrapper,
+.register-icon-wrapper {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.login-icon-wrapper i,
+.register-icon-wrapper i {
+    font-size: 2rem;
+    color: white;
+}
+
+/* Button Styles */
+.btn-gradient {
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(135deg, #405aa9 0%, #131f37 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Link Styles */
+.login-card a,
+.register-card a {
+    color: #4b6cb7;
+    transition: color 0.3s ease;
+}
+
+.login-card a:hover,
+.register-card a:hover {
+    color: #182848;
+}

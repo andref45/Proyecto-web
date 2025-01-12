@@ -1,3 +1,5 @@
+from functools import cache
+from arrow import now
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -256,7 +258,13 @@ class Order(models.Model):
     address = models.TextField(blank=True, verbose_name="Dirección")
     
     # Campos de contenido
-    image = models.ImageField(upload_to='orders/', null=True, blank=True, verbose_name="Imagen de Medidas")
+    image = models.ImageField(
+    upload_to='orders/%Y/%m/',
+    null=True, 
+    blank=True,
+    verbose_name="Imagen de Referencia",
+    help_text="Imagen opcional del proyecto o espacio (plano, boceto o fotografía)"
+)
     notes = models.TextField(blank=True, verbose_name="Notas")
     measurements = models.JSONField(null=True, blank=True, verbose_name="Medidas")
     
@@ -269,6 +277,9 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
 
     class Meta:
+        indexes = [
+        models.Index(fields=['status', 'created_at']),
+        models.Index(fields=['customer', '-created_at'])]
         verbose_name = "Pedido"
         verbose_name_plural = "Pedidos"
         ordering = ['-created_at']
@@ -288,41 +299,33 @@ class Order(models.Model):
             return round(total, 2)
         return 0
 
-    # En models.py, actualiza el método calculate_delivery_time en la clase Order
-def calculate_delivery_time(self):
-    """Calcula el tiempo estimado de entrega basado en medidas y carga actual"""
-    if not self.measurements:
-        return None
+    # En models.py, en la clase Order
+    def calculate_delivery_time(self):
+        if not self.measurements:
+            return None
 
-    # Calcular metros totales
-    total_meters = self.calculate_total_meters()
-    
-    # Factores base actualizados
-    BASE_SPEED = 20  # metros por hora
-    SETUP_TIME = 0.5  # horas
-    MIN_TIME = 1  # hora mínima
-    
-    # Factores de complejidad
-    piece_count = sum(int(m.get('cantidad', 0)) for m in self.measurements)
-    complexity_factor = 1.2 if piece_count > 10 else 1
-    
-    # Obtener órdenes en proceso y calcular carga
-    current_orders = Order.objects.filter(
-        status__in=['processing', 'cutting'],
-        created_at__date=timezone.now().date()
-    ).exclude(id=self.id)
-    
-    workload = current_orders.aggregate(
-        total=Sum('total_meters')
-    )['total'] or 0
-    
-    # Ajustar tiempo base según factores
-    base_hours = max((total_meters / BASE_SPEED) + SETUP_TIME, MIN_TIME)
-    workload_factor = 1 + (workload / 1000)  # Aumenta tiempo según carga
-    
-    estimated_hours = base_hours * complexity_factor * workload_factor
-    
-    return timezone.now() + timedelta(hours=estimated_hours)
+        total_meters = self.calculate_total_meters()
+        
+        # Simplificar factores
+        BASE_SPEED = 20  # metros por hora
+        MIN_TIME = 1  # hora mínima
+        
+        # Obtener solo pedidos relevantes
+        active_orders = Order.objects.filter(
+            status__in=['processing', 'cutting'],
+            created_at__date=timezone.now().date()
+        ).exclude(id=self.id)
+        
+        workload = active_orders.aggregate(
+            total=Sum('total_meters')
+        )['total'] or 0
+        
+        # Cálculo simplificado
+        estimated_hours = max(total_meters / BASE_SPEED, MIN_TIME)
+        if workload > 0:
+            estimated_hours *= 1.2  # 20% más si hay carga
+        
+        return timezone.now() + timedelta(hours=round(estimated_hours))
 
     def save(self, *args, **kwargs):
         # Actualizar metros totales
@@ -332,21 +335,22 @@ def calculate_delivery_time(self):
         if not self.estimated_delivery:
             self.estimated_delivery = self.calculate_delivery_time()
 
-        # Manejar historial de estados
-        if not self.pk or (
-            self.pk and 
-            Order.objects.filter(pk=self.pk).exists() and 
-            Order.objects.get(pk=self.pk).status != self.status
-        ):
-            def save_history():
-                OrderStatusHistory.objects.create(
-                    order=self,
-                    status=self.status,
-                    created_by=getattr(self, '_current_user', None)
-                )
-            transaction.on_commit(save_history)
-        
+        # Guardar el estado anterior si existe
+        old_status = None
+        if self.pk:
+            old_status = Order.objects.get(pk=self.pk).status
+
+        # Guardar el pedido
         super().save(*args, **kwargs)
+
+        # Crear historial solo si es nuevo o cambió el estado
+        if not old_status or old_status != self.status:
+            OrderStatusHistory.objects.create(
+                order=self,
+                status=self.status,
+                created_by=getattr(self, '_current_user', None)
+            )
+
 
 def calculate_total_meters(self):
     """Calcula el total de metros basado en las medidas"""
@@ -433,69 +437,40 @@ class StockAlert(models.Model):
         ordering = ['-created_at']
         verbose_name = "Alerta de Stock"
         verbose_name_plural = "Alertas de Stock"
-
+    
+    # En models.py - class StockAlert
     @classmethod
     def create_alerts(cls):
-        """Genera alertas automáticamente basadas en las condiciones del inventario"""
-        # Usar now() con zona horaria
-        today = timezone.now()
-        today_start = timezone.make_aware(datetime.combine(today.date(), datetime.min.time()))
-        
-        # Limpiar alertas antiguas
-        cls.objects.filter(
-            created_at__lt=today_start - timedelta(days=7)
-        ).delete()
-        
-        # Alertas de stock bajo
-        low_stock_boards = Board.objects.filter(
-            is_active=True,
-            stock__lte=F('minimum_stock')
-        )
-        for board in low_stock_boards:
-            cls.objects.get_or_create(
-                board=board,
-                alert_type='low_stock',
+        """Sistema de alertas optimizado"""
+        cache_key = 'active_alerts'
+        if cache.get(cache_key):
+            return
+            
+        with transaction.atomic():
+            # Limpiar alertas antiguas en batch
+            cls.objects.filter(
+                created_at__lt=now() - timedelta(days=1)
+            ).delete()
+            
+            # Crear alertas en batch
+            alerts_to_create = []
+            
+            # Stock bajo
+            low_stock_boards = Board.objects.filter(
                 is_active=True,
-                defaults={
-                    'message': f'Stock bajo: {board.stock} unidades (mínimo: {board.minimum_stock})'
-                }
-            )
-
-        # Alertas de inactividad
-        no_movement_boards = Board.objects.filter(
-            is_active=True,
-            last_movement_date__lte=today.date() - timedelta(days=60)
-        )
-        for board in no_movement_boards:
-            cls.objects.get_or_create(
-                board=board,
-                alert_type='no_movement',
-                is_active=True,
-                defaults={
-                    'message': f'Sin movimiento por {board.days_without_movement} días'
-                }
-            )
-
-        # Alertas de alta demanda
-        week_threshold = 10
-        high_demand_boards = Board.objects.filter(
-            inventory__date__gte=today_start - timedelta(days=7)
-        ).annotate(
-            movement_count=Count('inventory')
-        ).filter(
-            movement_count__gte=week_threshold
-        )
-        
-        for board in high_demand_boards:
-            cls.objects.get_or_create(
-                board=board,
-                alert_type='high_demand',
-                is_active=True,
-                defaults={
-                    'message': f'Alta demanda detectada en los últimos 7 días'
-                }
-            )
-
-    def __str__(self):
-        return f"{self.get_alert_type_display()} - {self.board}"
-
+                stock__lte=F('minimum_stock')
+            ).values('id', 'stock', 'minimum_stock')
+            
+            for board in low_stock_boards:
+                alerts_to_create.append(
+                    cls(
+                        board_id=board['id'],
+                        alert_type='low_stock',
+                        message=f'Stock bajo: {board["stock"]} unidades'
+                    )
+                )
+            
+            if alerts_to_create:
+                cls.objects.bulk_create(alerts_to_create)
+                
+            cache.set(cache_key, True, 300)  # Cache por 5 minutos

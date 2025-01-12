@@ -121,7 +121,7 @@
                             <label class="form-label">Nuevo Estado:</label>
                             <select name="status" class="form-select">
                                 {% for value, label in order_status_choices %}
-                                <option value="{{ value }}" {% if order.status==value %}selected{% endif %}>
+                                <option value="{{ value }}" {% if order.status == value %}selected="selected"{% endif %}>
                                     {{ label }}
                                 </option>
                                 {% endfor %}

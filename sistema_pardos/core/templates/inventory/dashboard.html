@@ -2,31 +2,39 @@
 {% load static %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/home.css' %}">
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
 {% endblock %}
 
 {% block content %}
 <div class="container dashboard-container">
     <!-- Encabezado -->
     <div class="welcome-banner mb-4">
-        <h1 class="display-5 fw-bold mb-0">Control de Inventario</h1>
-        <p class="lead mb-0">Monitoreo y análisis de productos</p>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 fw-bold mb-0">Control de Inventario</h1>
+                <p class="lead mb-0">Monitoreo y análisis de productos</p>
+            </div>
+            <div class="text-end">
+                <h3 class="mb-0">Total Productos: <span id="total-products">{{ total_products }}</span></h3>
+                <p class="text-muted">Valor total: $<span id="total-value">{{ total_value|floatformat:2 }}</span></p>
+            </div>
+        </div>
     </div>
 
     <!-- Alertas -->
     <div class="row g-4 mb-4">
         <!-- Productos sin rotación -->
         <div class="col-md-6">
-            <div class="card h-100">
+            <div class="card stats-card">
                 <div class="card-header bg-warning bg-opacity-10">
-                    <h5 class="mb-0 text-warning">
+                    <h5 class="mb-0 text-warning" id="stale-title">
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         Productos sin Rotación (60+ días)
                     </h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0">
+                        <table class="table mb-0" id="stale-products-table">
                             <thead>
                                 <tr>
                                     <th>Producto</th>
@@ -42,7 +50,7 @@
                                     <td>{{ product.stock }}</td>
                                     <td>{{ product.days_without_movement }}</td>
                                     <td>
-                                        <a title="b" href="{% url 'board_edit' product.id %}" 
+                                        <a title="Editar" href="{% url 'board_edit' product.id %}" 
                                            class="btn btn-sm btn-warning">
                                             <i class="bi bi-pencil"></i>
                                         </a>
@@ -64,45 +72,17 @@
 
         <!-- Stock bajo -->
         <div class="col-md-6">
-            <div class="card h-100">
+            <div class="card stats-card">
                 <div class="card-header bg-danger bg-opacity-10">
-                    <h5 class="mb-0 text-danger">
+                    <h5 class="mb-0 text-danger" id="low-stock-title">
                         <i class="bi bi-arrow-down-circle me-2"></i>
                         Productos con Stock Bajo
                     </h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>Stock Actual</th>
-                                    <th>Stock Mínimo</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for product in low_stock_products %}
-                                <tr>
-                                    <td>{{ product }}</td>
-                                    <td>{{ product.stock }}</td>
-                                    <td>{{ product.minimum_stock }}</td>
-                                    <td>
-                                        <a title="b" href="{% url 'board_edit' product.id %}" 
-                                           class="btn btn-sm btn-danger">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-3">
-                                        No hay productos con stock bajo
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
+                        <table class="table mb-0" id="low-stock-table">
+                            <!-- ... contenido existente ... -->
                         </table>
                     </div>
                 </div>
@@ -111,34 +91,25 @@
     </div>
 
     <!-- Estadísticas por Color -->
-    <div class="card">
+    <div class="card stats-card">
         <div class="card-header bg-white">
-            <h5 class="mb-0">Análisis por Color</h5>
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Análisis por Color</h5>
+                <button class="btn btn-custom btn-sm" id="refresh-dashboard">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar Datos
+                </button>
+            </div>
         </div>
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Color</th>
-                            <th>Total Productos</th>
-                            <th>Stock Total</th>
-                            <th>Promedio días sin movimiento</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for stat in color_stats %}
-                        <tr>
-                            <td>{{ stat.color__name }}</td>
-                            <td>{{ stat.total_products }}</td>
-                            <td>{{ stat.total_stock }}</td>
-                            <td>{{ stat.avg_days_without_movement|floatformat:0 }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-responsive" id="color-stats-container">
+                <!-- ... contenido existente ... -->
             </div>
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}
