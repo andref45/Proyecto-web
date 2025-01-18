@@ -1,0 +1,63 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Pedido #{{ order.id }}</h3>
+                <span class="badge bg-primary">{{ order.get_status_display }}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Detalles del Pedido</h5>
+                    <p><strong>Fecha:</strong> {{ order.created_at|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Tipo de cliente:</strong> {{ order.get_customer_type_display }}</p>
+                    <p><strong>Total metros:</strong> {{ order.total_meters|default:"Pendiente" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Información de Contacto</h5>
+                    <p><strong>Teléfono:</strong> {{ order.phone|default:"No especificado" }}</p>
+                    <p><strong>Dirección:</strong> {{ order.address|default:"No especificada" }}</p>
+                    {% if order.carpentry_business %}
+                    <p><strong>Negocio:</strong> {{ order.carpentry_business }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if order.measurements %}
+            <div class="mt-4">
+                <h5>Medidas</h5>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Largo</th>
+                            <th>Ancho</th>
+                            <th>Cantidad</th>
+                            <th>Área Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in order.measurements %}
+                        <tr>
+                            <td>{{ m.largo }} m</td>
+                            <td>{{ m.ancho }} m</td>
+                            <td>{{ m.cantidad }}</td>
+                            <td>{{ m.largo|multiply:m.ancho|multiply:m.cantidad }} m²</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{% url 'customer_orders' %}" class="btn btn-secondary">
+                    Volver a mis pedidos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

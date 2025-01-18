@@ -178,46 +178,66 @@ class InventoryMovementForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
-
 class ProductionRecordForm(forms.ModelForm):
     class Meta:
         model = ProductionRecord
-        fields = ['start_time', 'end_time', 
-                 'meters_cut', 'pieces_cut', 'edges_applied', 
-                 'waste_percentage']  
+        fields = ['meters_cut', 'pieces_cut', 'edges_applied', 'waste_percentage', 'start_time', 'end_time']
         widgets = {
-            'start_time': forms.TimeInput(attrs={
-                'class': 'form-control flatpickr-input time-input',
-                'placeholder': 'Seleccione hora',
-                'style': 'max-width: 200px;'
-            }),
-            'end_time': forms.TimeInput(attrs={
-                'class': 'form-control flatpickr-input time-input',
-                'placeholder': 'Seleccione hora',
-                'style': 'max-width: 200px;'
-            }),
-            'meters_cut': forms.NumberInput(attrs={
-                'step': '0.01',
-                'class': 'form-control',
-                'placeholder': 'Ingrese los metros cortados'
-            }),
-            'pieces_cut': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ingrese el número de piezas'
-            }),
-            'edges_applied': forms.NumberInput(attrs={
-                'step': '0.01',
-                'class': 'form-control',
-                'placeholder': 'Ingrese los metros de canto aplicados'
-            }),
-            'waste_percentage': forms.NumberInput(attrs={
-                'step': '0.01',
-                'max': '100',
-                'min': '0',
-                'class': 'form-control',
-                'placeholder': 'Ingrese el porcentaje de desperdicio'
-            })
+            'meters_cut': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'step': '0.01',
+                    'min': '0',
+                    'placeholder': 'Metros cortados'
+                }
+            ),
+            'pieces_cut': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'min': '0',
+                    'placeholder': 'Cantidad de piezas'
+                }
+            ),
+            'edges_applied': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'step': '0.01',
+                    'min': '0',
+                    'placeholder': 'Metros de canto (opcional)'
+                }
+            ),
+            'waste_percentage': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'step': '0.1',
+                    'min': '0',
+                    'max': '100',
+                    'placeholder': 'Porcentaje de desperdicio'
+                }
+            ),
+            'start_time': forms.TimeInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'time'
+                }
+            ),
+            'end_time': forms.TimeInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'time'
+                }
+            )
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+
+        if start_time and end_time and start_time >= end_time:
+            raise forms.ValidationError('La hora de inicio debe ser anterior a la hora de fin')
+
+        return cleaned_data
 
 
 class QuickProductionEntryForm(forms.ModelForm):
@@ -305,4 +325,4 @@ class OrderForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields:
             if field != 'image':
-                self.fields[field].required = False
+                self.fields[field].required = False  

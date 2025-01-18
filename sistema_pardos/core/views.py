@@ -20,7 +20,7 @@ from django.http import JsonResponse
 from decimal import Decimal
 from django.db.models import Sum, F, Count, Q
 from datetime import datetime, timedelta
-from .models import MaterialType, Color, Board, Inventory
+from .models import MaterialType, Color, Board, Inventory, OrderNotification
 from .forms import MaterialTypeForm, ColorForm, BoardForm, InventoryMovementForm
 from django.contrib import messages
 from django.utils import timezone
@@ -41,65 +41,84 @@ from openpyxl.styles import PatternFill
 from django.db.models.functions import Greatest, Extract
 from django.db import transaction
 
-
 @login_required
 def home(request):
-    # Estadísticas generales
-    total_products = Board.objects.filter(is_active=True).count()
-    products_low_stock = Board.objects.filter(
-        is_active=True,
-        stock__lte=F('minimum_stock')
-    ).count()
-    total_value = Board.objects.filter(is_active=True).aggregate(
-        total=Sum(F('stock') * F('price_per_m2') * F('width') * F('height'))
-    )['total'] or Decimal('0')
-
+    # Estadísticas generales (solo para staff)
+    if request.user.is_staff:
+        total_products = Board.objects.filter(is_active=True).count()
+        products_low_stock = Board.objects.filter(
+            is_active=True,
+            stock__lte=F('minimum_stock')
+        ).count()
+        total_value = Board.objects.filter(is_active=True).aggregate(
+            total=Sum(F('stock') * F('price_per_m2') * F('width') * F('height'))
+        )['total'] or Decimal('0')
+    else:
+        total_products = 0
+        products_low_stock = 0
+        total_value = Decimal('0')
 
     today = timezone.now().date()
     this_month = today.replace(day=1)
-    
+
+    # Estadísticas de órdenes
+    if request.user.is_staff:
+        orders_query = Order.objects.all()
+    else:
+        orders_query = Order.objects.filter(customer=request.user)
+
     orders_stats = {
-        'total_today': Order.objects.filter(created_at__date=today).count(),
-        'total_month': Order.objects.filter(created_at__date__gte=this_month).count(),
-        'pending': Order.objects.filter(status='pending').count(),
-        'processing': Order.objects.filter(status__in=['processing', 'cutting', 'edge_banding']).count(),
-        'completed': Order.objects.filter(status__in=['completed', 'delivered']).count(),
-        'total_meters_month': Order.objects.filter(
+        'total_today': orders_query.filter(created_at__date=today).count(),
+        'total_month': orders_query.filter(created_at__date__gte=this_month).count(),
+        'pending': orders_query.filter(status='pending').count(),
+        'processing': orders_query.filter(status__in=['processing', 'cutting', 'edge_banding']).count(),
+        'completed': orders_query.filter(status__in=['completed', 'delivered']).count(),
+        'total_meters_month': orders_query.filter(
             created_at__date__gte=this_month
         ).aggregate(
             total=Sum('total_meters')
         )['total'] or 0
     }
 
-    # Datos para el gráfico
-    last_days = 7
-    orders_by_day = Order.objects.filter(
-        created_at__date__gte=today - timedelta(days=last_days)
-    ).values('created_at__date').annotate(
-        count=Count('id'),
-        meters=Sum('total_meters')
-    ).order_by('created_at__date')
+    # Datos para el gráfico (solo para staff)
+    if request.user.is_staff:
+        last_days = 7
+        orders_by_day = Order.objects.filter(
+            created_at__date__gte=today - timedelta(days=last_days)
+        ).values('created_at__date').annotate(
+            count=Count('id'),
+            meters=Sum('total_meters')
+        ).order_by('created_at__date')
 
-    chart_data = {
-    'labels': json.dumps([d['created_at__date'].strftime('%d/%m') for d in orders_by_day]),
-    'orders': json.dumps([d['count'] for d in orders_by_day]),
-    'meters': json.dumps([float(d['meters'] or 0) for d in orders_by_day])
-}
-    
+        chart_data = {
+            'labels': json.dumps([d['created_at__date'].strftime('%d/%m') for d in orders_by_day]),
+            'orders': json.dumps([d['count'] for d in orders_by_day]),
+            'meters': json.dumps([float(d['meters'] or 0) for d in orders_by_day])
+        }
+    else:
+        chart_data = {
+            'labels': json.dumps([]),
+            'orders': json.dumps([]),
+            'meters': json.dumps([])
+        }
+
     # Filtros de pedidos
     status_filter = request.GET.get('status', '')
     date_filter = request.GET.get('date', '')
-    
+
     # Query base para pedidos
-    recent_orders = Order.objects.all()
-    
+    if request.user.is_staff:
+        recent_orders = Order.objects.all()
+    else:
+        recent_orders = Order.objects.filter(customer=request.user)
+
     # Aplicar filtros
     if status_filter:
         recent_orders = recent_orders.filter(status=status_filter)
     if date_filter:
         recent_orders = recent_orders.filter(created_at__date=date_filter)
     
-    recent_orders = recent_orders.order_by('-created_at')[:10]  # Últimos 10 pedidos
+    recent_orders = recent_orders.order_by('-created_at')[:10]  
 
     context = {
         'total_products': total_products,
@@ -111,6 +130,7 @@ def home(request):
         'selected_date': date_filter,
         'orders_stats': orders_stats,
         'chart_data': chart_data,
+        'is_staff': request.user.is_staff  
     }
     return render(request, 'core/home.html', context)
 
@@ -266,20 +286,18 @@ def board_edit(request, pk):
 # Vista para el dashboard con estadísticas
 @login_required
 def dashboard(request):
-    total_products = Board.objects.filter(is_active=True).count()
-    products_low_stock = Board.objects.filter(
-        stock__lte=F('minimum_stock'),
-        is_active=True
-    ).count()
-    total_value = Board.objects.filter(is_active=True).aggregate(
-        total=Sum(F('stock') * F('price_per_m2') * F('width') * F('height')))['total'] or Decimal('0')
+    board_stats = Board.objects.filter(is_active=True).aggregate(
+        total_products=Count('id'),
+        products_low_stock=Count('id', filter=Q(stock__lte=F('minimum_stock'))),
+        total_value=Sum(F('stock') * F('price_per_m2') * F('width') * F('height'))
+    )
 
     context = {
-        'total_products': total_products,
-        'products_low_stock': products_low_stock,
-        'total_value': total_value
+        'total_products': board_stats['total_products'],
+        'products_low_stock': board_stats['products_low_stock'],
+        'total_value': board_stats['total_value'] or Decimal('0')
     }
-    
+
     return render(request, 'core/dashboard.html', context)
 
 
@@ -375,61 +393,10 @@ def quick_production_entry(request):
 
 
 
-import csv
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from datetime import datetime
 
-@login_required
-def export_production_csv(request):
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="produccion_{}.csv"'.format(
-        datetime.now().strftime('%Y%m%d_%H%M%S')
-    )
-    
-    # Crear el escritor CSV
-    writer = csv.writer(response)
-    # Escribir encabezados
-    writer.writerow(['Operador', 'Fecha', 'Hora Inicio', 'Hora Fin', 
-                    'Metros Cortados', 'Piezas', 'Metros de Canto', 'Desperdicio'])
-    
-    # Obtener registros
-    records = ProductionRecord.objects.all().order_by('-date', '-start_time')
-    
-    # Escribir datos
-    for record in records:
-        writer.writerow([
-            record.operator.get_full_name(),
-            record.date,
-            record.start_time,
-            record.end_time,
-            record.meters_cut,
-            record.pieces_cut,
-            record.edges_applied or '-',
-            f"{record.waste_percentage}%"
-        ])
-    
-    return response
-
-@login_required
-def export_production_pdf(request):
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="produccion_{}.pdf"'.format(
-        datetime.now().strftime('%Y%m%d_%H%M%S')
-    )
-
-    # Obtener registros
-    records = ProductionRecord.objects.all().order_by('-date', '-start_time')
-    
-    html_string = render_to_string('production/production_pdf.html', {
-        'records': records,
-        'current_date': datetime.now()
-    })
-    
-    from weasyprint import HTML
-    HTML(string=html_string).write_pdf(response)
-    
-    return response
 
 
 
@@ -458,14 +425,16 @@ def order_create(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(Order, pk=pk)
-    if not (request.user.is_staff or order.customer == request.user):
-        messages.error(request, 'No tiene permiso para ver este pedido.')
+    
+    if not request.user.is_staff and order.customer != request.user:
+        messages.error(request, 'No tienes permiso para ver este pedido.')
         return redirect('home')
     
-    return render(request, 'core/orders/detail.html', {
+    context = {
         'order': order,
         'order_status_choices': Order.STATUS_CHOICES
-    })
+    }
+    return render(request, 'core/orders/detail.html', context) 
 
 
 
@@ -569,67 +538,148 @@ def inventory_dashboard(request):
 
 @login_required
 def production_dashboard(request):
-    # Filtros de fecha
     today = timezone.now().date()
-    date_from = request.GET.get('date_from', today.strftime('%Y-%m-%d'))
-    date_to = request.GET.get('date_to', today.strftime('%Y-%m-%d'))
-    operator_id = request.GET.get('operator')
-
-    # Query base
-    productions = ProductionRecord.objects.all()
     
-    # Aplicar filtros
-    if date_from:
-        productions = productions.filter(date__gte=date_from)
-    if date_to:
-        productions = productions.filter(date__lte=date_to)
-    if operator_id:
-        productions = productions.filter(operator_id=operator_id)
-
-    # Estadísticas
-    stats = productions.aggregate(
+    if request.method == 'POST':
+        try:
+            # Obtener y validar las horas del formulario
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            
+            if not start_time or not end_time:
+                raise ValueError("Las horas de inicio y fin son requeridas")
+                
+            # Crear el registro usando las horas del formulario
+            production_record = ProductionRecord.objects.create(
+                operator=request.user,
+                date=today,
+                start_time=start_time,  # Usar la hora del formulario
+                end_time=end_time,      # Usar la hora del formulario
+                meters_cut=float(request.POST.get('meters_cut')),
+                pieces_cut=int(request.POST.get('pieces_cut')),
+                waste_percentage=float(request.POST.get('waste_percentage')),
+                edges_applied=request.POST.get('edges_applied')
+            )
+            messages.success(request, 'Registro guardado exitosamente')
+            return redirect('production_list')
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Error al guardar el registro: {str(e)}')
+    
+    # Estadísticas del día
+    stats = ProductionRecord.objects.filter(
+        date=today
+    ).aggregate(
         total_meters=Sum('meters_cut'),
         total_pieces=Sum('pieces_cut'),
         total_edges=Sum('edges_applied'),
         avg_waste=Avg('waste_percentage')
     )
-
-    # Estadísticas por operador
-    operator_stats = productions.values(
-        'operator__username',
-        'operator__first_name',
-        'operator__last_name'
-    ).annotate(
-        total_meters=Sum('meters_cut'),
-        total_pieces=Sum('pieces_cut'),
-        total_edges=Sum('edges_applied'),
-        avg_waste=Avg('waste_percentage'),
-        total_hours=Sum(
-            ExpressionWrapper(
-                F('end_time') - F('start_time'),
-                output_field=fields.DurationField()
-            )
-        )
-    )
-
+    
+    # Registros del día
+    productions = ProductionRecord.objects.filter(
+        date=today
+    ).select_related('operator').order_by('-date', '-start_time')
+    
     context = {
-        'productions': productions,
         'stats': stats,
-        'operator_stats': operator_stats,
-        'operators': User.objects.filter(
-            productionrecord__isnull=False
-        ).distinct(),
-        'date_from': date_from,
-        'date_to': date_to,
-        'selected_operator': operator_id
+        'productions': productions,
     }
+
+    if request.GET.get('export') == 'csv':
+        return export_production_csv(request)
     
     return render(request, 'production/dashboard.html', context)
+
+login_required
+def export_production_csv(request):
+    """
+    Exporta los registros de producción a CSV asegurando que los datos del operador
+    estén correctamente incluidos
+    """
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="produccion_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+    
+    # Configurar el writer con el encoding correcto para caracteres especiales
+    response.write(u'\ufeff'.encode('utf-8'))  # BOM para Excel
+    writer = csv.writer(response, delimiter=';')  # Usar ; para mejor compatibilidad con Excel
+    
+    # Escribir encabezados
+    writer.writerow([
+        'Operador',
+        'Fecha',
+        'Inicio',
+        'Fin',
+        'Metros',
+        'Piezas',
+        'Cantos',
+        'Desperdicio (%)'
+    ])
+    
+    # Obtener registros con información del operador
+    records = (ProductionRecord.objects
+              .select_related('operator')
+              .all()
+              .order_by('-date', '-start_time'))
+    
+    # Escribir datos
+    for record in records:
+        # Obtener nombre del operador de manera segura
+        operator_name = ''
+        if record.operator:
+            if record.operator.first_name or record.operator.last_name:
+                operator_name = f"{record.operator.first_name} {record.operator.last_name}".strip()
+            else:
+                operator_name = record.operator.username
+                
+        writer.writerow([
+            operator_name,
+            record.date.strftime('%d/%m/%Y'),
+            record.start_time.strftime('%H:%M') if record.start_time else '',
+            record.end_time.strftime('%H:%M') if record.end_time else '',
+            f"{record.meters_cut:.2f}",  # Sin 'm' para facilitar uso en Excel
+            record.pieces_cut,
+            f"{record.edges_applied:.2f}" if record.edges_applied else '0.00',
+            f"{record.waste_percentage:.1f}"
+        ])
+    
+    return response
+
+# Función auxiliar que podrías usar si necesitas el formato del operador en otros lugares
+def get_operator_display_name(operator):
+    """
+    Obtiene el nombre de visualización del operador de manera consistente
+    """
+    if not operator:
+        return ''
+    
+    if operator.first_name or operator.last_name:
+        return f"{operator.first_name} {operator.last_name}".strip()
+    return operator.username
+
+@login_required
+def production_add(request):
+    if request.method == 'POST':
+        try:
+            ProductionRecord.objects.create(
+                operator=request.user,
+                meters_cut=float(request.POST.get('meters_cut')),
+                pieces_cut=int(request.POST.get('pieces_cut')),
+                waste_percentage=float(request.POST.get('waste_percentage')),
+                date=timezone.now().date()
+            )
+            messages.success(request, 'Registro guardado exitosamente')
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
 
 
 @login_required
 def production_reports(request):
-    # Aquí va la lógica de la vista que añadimos antes
     end_date = timezone.now().date()
     start_date = end_date - timedelta(days=30)
     
@@ -741,16 +791,6 @@ def export_production_excel(request, context):
     response['Content-Disposition'] = 'attachment; filename=produccion.xlsx'
     
     wb.save(response)
-    return response
-
-def export_production_pdf(request, context):
-    template = get_template('reports/production_pdf.html')
-    html = template.render(context)
-    
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename=produccion.pdf'
-    
-    HTML(string=html).write_pdf(response)
     return response
 
 
@@ -929,81 +969,6 @@ def update_dashboard_data(request):
     })
 
 
-@login_required
-def dashboard_realtime(request):
-    current_time = timezone.now()
-    start_of_day = current_time.replace(hour=0, minute=0, second=0)
-    
-    # Producción por hora
-    production_history = []
-    for hour in range(24):
-        hour_start = start_of_day + timedelta(hours=hour)
-        hour_end = hour_start + timedelta(hours=1)
-        
-        if hour_end > current_time:
-            break
-            
-        hour_production = ProductionRecord.objects.filter(
-            date=start_of_day.date(),
-            start_time__gte=hour_start.time(),
-            start_time__lt=hour_end.time()
-        ).aggregate(
-            meters=Sum('meters_cut'),
-            pieces=Sum('pieces_cut')
-        )
-        
-        production_history.append({
-            'hour': hour_start.strftime('%H:00'),
-            'meters': hour_production['meters'] or 0,
-            'pieces': hour_production['pieces'] or 0
-        })
-
-    initial_data = {
-        'production': ProductionRecord.objects.filter(
-            date=current_time.date()
-        ).aggregate(
-            total_meters=Sum('meters_cut'),
-            total_pieces=Sum('pieces_cut'),
-            avg_waste=Avg('waste_percentage')
-        ),
-        'production_history': production_history,
-        'alerts': StockAlert.objects.filter(
-            is_active=True
-        ).values('message', 'alert_type', 'created_at')[:5]
-    }
-    
-    return render(request, 'core/dashboard_realtime.html', {
-        'initial_data': initial_data
-    })
-
-@login_required
-def update_dashboard_data(request):
-    """Endpoint para actualizaciones AJAX"""
-    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({'error': 'Invalid request'}, status=400)
-        
-    current_time = timezone.now()
-    start_of_day = current_time.replace(hour=0, minute=0, second=0)
-    
-    # Obtener datos actualizados
-    production_data = ProductionRecord.objects.filter(
-        date=current_time.date()
-    ).aggregate(
-        total_meters=Sum('meters_cut'),
-        total_pieces=Sum('pieces_cut'),
-        avg_waste=Avg('waste_percentage')
-    )
-    
-    # Actualizar alertas
-    StockAlert.create_alerts()
-    
-    return JsonResponse({
-        'production': production_data,
-        'alerts': list(StockAlert.objects.filter(
-            is_active=True
-        ).values('message', 'alert_type', 'created_at')[:5])
-    })
-
 
 @login_required
 def operator_metrics(request):
@@ -1122,3 +1087,59 @@ def dashboard_data(request):
         cache.set(cache_key, data, 60)  # Cache por 1 minuto
     
     return JsonResponse(data)
+
+@login_required
+def get_notifications(request):
+    notifications = OrderNotification.objects.select_related('order').filter(
+        order__customer=request.user,
+        is_read=False
+    ).order_by('-created_at')[:5]
+    
+    return JsonResponse({
+        'notifications': [{
+            'id': n.id,
+            'message': n.message,
+            'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
+            'order_id': n.order_id
+        } for n in notifications]
+    })
+
+@login_required
+def mark_notification_read(request, notification_id):
+    OrderNotification.objects.filter(id=notification_id).update(is_read=True)
+    return JsonResponse({'success': True})
+
+@login_required
+def customer_orders(request):
+    """Vista para que los clientes vean sus pedidos"""
+    orders = Order.objects.filter(customer=request.user)
+    
+    status = request.GET.get('status')
+    if status:
+        orders = orders.filter(status=status)
+        
+    orders = orders.order_by('-created_at')
+    
+    context = {
+        'orders': orders,
+        'status_choices': Order.STATUS_CHOICES,
+        'current_status': status
+    }
+    return render(request, 'orders/customer_orders.html', context)
+
+@login_required
+def customer_order_detail(request, pk):
+    """Vista detallada del pedido para el cliente"""
+    order = get_object_or_404(Order, pk=pk)
+    
+    if order.customer != request.user and not request.user.is_staff:
+        messages.error(request, 'No tienes permiso para ver este pedido.')
+        return redirect('customer_orders')
+    
+    status_history = order.status_history.all().order_by('-created_at')
+    
+    context = {
+        'order': order,
+        'status_history': status_history
+    }
+    return render(request, 'orders/customer_order_detail.html', context)

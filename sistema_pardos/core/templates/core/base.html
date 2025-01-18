@@ -125,6 +125,21 @@
         {% endif %}
         {% block content %}{% endblock %}
     </div>
+    <div class="dropdown">
+        <button title="s" class="btn btn-link position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-bell"></i>
+            <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
+                0
+            </span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end" style="width: 300px;" aria-labelledby="notificationDropdown">
+            <div class="p-2">
+                <h6 class="mb-2">Notificaciones</h6>
+                <div id="notification-container">
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}

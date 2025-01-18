@@ -1,124 +1,101 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/home.css' %}">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-{% endblock %}
-
 {% block content %}
 <div class="container dashboard-container">
-    <!-- Encabezado -->
     <div class="welcome-banner mb-4">
-        <h1 class="display-5 fw-bold mb-0">Control de Producción</h1>
-        <p class="lead mb-0">Seguimiento y análisis de rendimiento</p>
-    </div>
-
-    <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Desde</label>
-                    <input title="b" type="date" name="date_from" class="form-control datepicker" 
-                           value="{{ date_from }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Hasta</label>
-                    <input title="b" type="date" name="date_to" class="form-control datepicker" 
-                           value="{{ date_to }}">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Operador</label>
-                    <select title="b" name="operator" class="form-select">
-                        <option value="">Todos los operadores</option>
-                        {% for operator in operators %}
-                        <option value="{{ operator.id }}" 
-                                {% if selected_operator == operator.id|stringformat:"i" %}selected{% endif %}>
-                            {{ operator.get_full_name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary d-block w-100">
-                        <i class="bi bi-funnel me-2"></i>Filtrar
-                    </button>
-                </div>
-            </form>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 fw-bold mb-0">Producción Diaria</h1>
+                <p class="lead mb-0">Control de métricas básicas</p>
+            </div>
+            <div class="btn-group">
+                <button id="refresh-dashboard" class="btn btn-primary">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar
+                </button>
+                <a href="?export=csv" class="btn btn-secondary">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- Estadísticas Generales -->
+    <!-- Métricas Simples -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="text-muted mb-2">Total Metros Cortados</h6>
-                    <h3 class="mb-0">{{ stats.total_meters|default:0|floatformat:2 }} m</h3>
+                    <h5 class="text-muted">Metros Cortados Hoy</h5>
+                    <h2 id="meters-today">{{ stats.total_meters|default:0|floatformat:2 }} m</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="text-muted mb-2">Total Piezas</h6>
-                    <h3 class="mb-0">{{ stats.total_pieces|default:0 }}</h3>
+                    <h5 class="text-muted">Piezas Totales</h5>
+                    <h2 id="pieces-today">{{ stats.total_pieces|default:0 }}</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="text-muted mb-2">Total Cantos</h6>
-                    <h3 class="mb-0">{{ stats.total_edges|default:0|floatformat:2 }} m</h3>
+                    <h5 class="text-muted">Cantos Aplicados</h5>
+                    <h2 id="edges-today">{{ stats.total_edges|default:0|floatformat:2 }} m</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="text-muted mb-2">Desperdicio Promedio</h6>
-                    <h3 class="mb-0">{{ stats.avg_waste|default:0|floatformat:2 }}%</h3>
+                    <h5 class="text-muted">Desperdicio Promedio</h5>
+                    <h2 id="waste-today">{{ stats.avg_waste|default:0|floatformat:1 }}%</h2>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Rendimiento por Operador -->
+    <!-- Tabla de Producciones -->
     <div class="card">
         <div class="card-header bg-white">
-            <h5 class="mb-0">Rendimiento por Operador</h5>
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Registros de Producción</h5>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductionModal">
+                    <i class="bi bi-plus-circle"></i> Nuevo Registro
+                </button>
+            </div>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body">
             <div class="table-responsive">
-                <table class="table mb-0">
+                <table class="table">
                     <thead>
                         <tr>
                             <th>Operador</th>
-                            <th>Metros Cortados</th>
+                            <th>Metros</th>
                             <th>Piezas</th>
                             <th>Cantos</th>
                             <th>Desperdicio</th>
-                            <th>Horas Trabajadas</th>
-                            <th>Rendimiento (m/h)</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for stat in operator_stats %}
+                    <tbody id="production-list">
+                        {% for record in productions %}
                         <tr>
-                            <td>{{ stat.operator__first_name }} {{ stat.operator__last_name }}</td>
-                            <td>{{ stat.total_meters|floatformat:2 }} m</td>
-                            <td>{{ stat.total_pieces }}</td>
-                            <td>{{ stat.total_edges|floatformat:2 }} m</td>
-                            <td>{{ stat.avg_waste|floatformat:2 }}%</td>
-                            <td>{{ stat.total_hours|default:"0:00:00"|time:"H:i" }}</td>
-                            <td>{{ stat.total_meters|divide:stat.total_hours.seconds|multiply:3600|floatformat:2 }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center py-3">No hay datos para mostrar</td>
+                            <td>{{ record.operator.get_full_name }}</td>
+                            <td>{{ record.meters_cut }} m</td>
+                            <td>{{ record.pieces_cut }}</td>
+                            <td>{{ record.edges_applied|default:"-" }} m</td>
+                            <td>{{ record.waste_percentage }}%</td>
+                            <td>{{ record.start_time|time:"H:i" }}</td>
+                            <td>{{ record.end_time|time:"H:i" }}</td>
+                            <td>
+                                <button title="Editar" class="btn btn-sm btn-warning edit-record" data-id="{{ record.id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -127,18 +104,51 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    flatpickr(".datepicker", {
-        locale: "es",
-        dateFormat: "Y-m-d",
-        maxDate: "today"
-    });
-});
-</script>
+<!-- Modal de Registro -->
+<div class="modal fade" id="addProductionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo Registro de Producción</h5>
+                <button title="b" type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="production-form" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Metros Cortados</label>
+                        <input title="b" type="number" name="meters_cut" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Piezas</label>
+                        <input title="b" type="number" name="pieces_cut" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Metros de Canto</label>
+                        <input title="b" type="number" name="edges_applied" class="form-control" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Desperdicio (%)</label>
+                        <input title="b" type="number" name="waste_percentage" class="form-control" step="0.1" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Hora Inicio</label>
+                            <input title="b" type="time" name="start_time" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Hora Fin</label>
+                            <input title="b" type="time" name="end_time" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

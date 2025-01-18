@@ -97,7 +97,7 @@
             {% endif %}
         </div>
     </div>
-    <!-- Modal para actualizar estado -->
+    {% if user.is_staff %}
     <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -138,6 +138,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Información del cliente -->
     <div class="row mb-4">

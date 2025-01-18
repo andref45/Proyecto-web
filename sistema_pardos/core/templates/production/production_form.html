@@ -17,7 +17,7 @@
     </div>
     <div class="card">
         <div class="card-body">
-            <form method="post">
+            <form method="post" id="productionForm">
                 {% csrf_token %}
                 {% for field in form %}
                 <div class="mb-3">
@@ -32,12 +32,12 @@
                         {% if 'time' in field.name %}
                         <i class="bi bi-clock"></i>
                         {% endif %}
-                        {% if field.help_text %}
-                        <div class="form-text text-muted">
-                            {{ field.help_text }}
-                        </div>
-                        {% endif %}
                     </div>
+                    {% if field.help_text %}
+                    <div class="form-text text-muted">
+                        {{ field.help_text }}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
                 <div class="d-grid gap-2">
@@ -55,12 +55,12 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Mantener el mismo JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    flatpickr("input[name='start_time'], input[name='end_time']", {
+    // Configuración de Flatpickr para campos de tiempo
+    const timeConfig = {
         enableTime: true,
         noCalendar: true,
         dateFormat: "H:i",
@@ -72,9 +72,39 @@ document.addEventListener('DOMContentLoaded', function() {
         allowInput: true,
         position: "auto",
         theme: "material_blue",
-        placeholder: "Seleccione una hora",
-        onChange: function(selectedDates, dateStr, instance) {
-            instance.element.value = dateStr;
+        placeholder: "Seleccione una hora"
+    };
+
+    // Inicializar flatpickr para los campos de tiempo
+    const startTimePicker = flatpickr("input[name='start_time']", {
+        ...timeConfig,
+        onChange: function(selectedDates, dateStr) {
+            // Actualizar el valor mínimo del tiempo de fin
+            if (selectedDates[0]) {
+                endTimePicker.set('minDate', selectedDates[0]);
+            }
+        }
+    });
+
+    const endTimePicker = flatpickr("input[name='end_time']", {
+        ...timeConfig,
+        onChange: function(selectedDates, dateStr) {
+            // Actualizar el valor máximo del tiempo de inicio
+            if (selectedDates[0]) {
+                startTimePicker.set('maxDate', selectedDates[0]);
+            }
+        }
+    });
+
+    // Validación del formulario
+    const form = document.getElementById('productionForm');
+    form.addEventListener('submit', function(e) {
+        const startTime = document.querySelector('input[name="start_time"]').value;
+        const endTime = document.querySelector('input[name="end_time"]').value;
+
+        if (startTime && endTime && startTime >= endTime) {
+            e.preventDefault();
+            alert('La hora de inicio debe ser anterior a la hora de fin');
         }
     });
 });

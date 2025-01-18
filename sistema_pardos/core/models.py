@@ -169,12 +169,9 @@ class Inventory(models.Model):
         super().save(*args, **kwargs)
 
 
-
-
-
 class ProductionRecord(models.Model):
     operator = models.ForeignKey(
-        User, 
+        User,
         on_delete=models.CASCADE,
         verbose_name="Operador"
     )
@@ -228,6 +225,20 @@ class ProductionRecord(models.Model):
             end = datetime.combine(self.date, self.end_time)
             return end - start
         return None
+
+    @property
+    def efficiency_rate(self):
+        """Calcula la tasa de eficiencia"""
+        return 100 - self.waste_percentage if self.waste_percentage else 0
+
+    @property
+    def meters_per_hour(self):
+        """Calcula metros cortados por hora"""
+        duration = self.get_duration()
+        if duration and duration.total_seconds() > 0:
+            hours = duration.total_seconds() / 3600
+            return round(float(self.meters_cut) / hours, 2)
+        return 0
     
 
 class Order(models.Model):
@@ -473,4 +484,23 @@ class StockAlert(models.Model):
             if alerts_to_create:
                 cls.objects.bulk_create(alerts_to_create)
                 
-            cache.set(cache_key, True, 300)  # Cache por 5 minutos
+            cache.set(cache_key, True, 300)  
+
+
+
+# En models.py
+class OrderNotification(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    message = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['-created_at', 'is_read']),
+        ]
+        
+    @classmethod
+    def create_status_notification(cls, order, old_status=None):
+        message = f'Pedido #{order.id} actualizado a {order.get_status_display()}'
+        return cls.objects.create(order=order, message=message)
