@@ -6,9 +6,12 @@ from django.conf.urls.static import static
 urlpatterns = [
     # URLs Base y Autenticación
     path('', views.home, name='home'),
-    path('products/', views.products, name='products'),
+    path('products/', views.product_list, name='product_list'),
+    path('products/<int:product_id>/request/', views.product_request, name='product_request'),
     path('logout/', views.exit, name='exit'),
     path('register/', views.register, name='register'),
+    path('products/add/', views.product_add, name='product_add'),
+    path('products/<int:pk>/edit/', views.product_edit, name='product_edit'),
 
     # URLs Dashboard y Datos en tiempo real
     path('dashboard/realtime/', views.dashboard_realtime, name='dashboard_realtime'),

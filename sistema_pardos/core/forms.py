@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from .models import MaterialType, Color, Board, Inventory, ProductionRecord
+from .models import MaterialType, Color, Board, Inventory, Product, ProductionRecord
 from django import forms
 from .models import Order
 
@@ -326,3 +326,20 @@ class OrderForm(forms.ModelForm):
         for field in self.fields:
             if field != 'image':
                 self.fields[field].required = False  
+
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = ['name', 'sku', 'description', 'price', 'image', 'category', 
+                 'stock', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'sku': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'category': forms.TextInput(attrs={'class': 'form-control'}),
+            'stock': forms.NumberInput(attrs={'class': 'form-control'}),
+            'image': forms.FileInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }

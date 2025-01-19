@@ -504,3 +504,25 @@ class OrderNotification(models.Model):
     def create_status_notification(cls, order, old_status=None):
         message = f'Pedido #{order.id} actualizado a {order.get_status_display()}'
         return cls.objects.create(order=order, message=message)
+    
+class Product(models.Model):
+    name = models.CharField(max_length=200, verbose_name="Nombre")
+    description = models.TextField(verbose_name="Descripción")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio")
+    image = models.ImageField(upload_to='products/', blank=True, null=True, verbose_name="Imagen")
+    is_active = models.BooleanField(default=True, verbose_name="Activo")
+    
+    sku = models.CharField(max_length=50, unique=True, verbose_name="SKU", blank=True, null=True)
+    stock = models.IntegerField(default=0, verbose_name="Stock Disponible")
+    category = models.CharField(max_length=100, verbose_name="Categoría", blank=True)
+    created_at = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Creado por")
+
+    class Meta:
+        verbose_name = "Producto"
+        verbose_name_plural = "Productos"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name

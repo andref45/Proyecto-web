@@ -1,0 +1,87 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ title }}</h2>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.name.label }}</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="text-danger">{{ form.name.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.sku.label }}</label>
+                        {{ form.sku }}
+                        {% if form.sku.errors %}
+                        <div class="text-danger">{{ form.sku.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-12 mb-3">
+                        <label class="form-label">{{ form.description.label }}</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="text-danger">{{ form.description.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.price.label }}</label>
+                        {{ form.price }}
+                        {% if form.price.errors %}
+                        <div class="text-danger">{{ form.price.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.category.label }}</label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                        <div class="text-danger">{{ form.category.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.stock.label }}</label>
+                        {{ form.stock }}
+                        {% if form.stock.errors %}
+                        <div class="text-danger">{{ form.stock.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.image.label }}</label>
+                        {{ form.image }}
+                        {% if form.image.errors %}
+                        <div class="text-danger">{{ form.image.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-12 mb-3">
+                        <div class="form-check">
+                            {{ form.is_active }}
+                            <label class="form-check-label">{{ form.is_active.label }}</label>
+                        </div>
+                        {% if form.is_active.errors %}
+                        <div class="text-danger">{{ form.is_active.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <a href="{% url 'product_list' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

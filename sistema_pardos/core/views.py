@@ -11,7 +11,8 @@ from django.urls import reverse
 from openpyxl import Workbook
 from prompt_toolkit import HTML
 from sqlalchemy import Cast
-from .forms import CustomUserCreationForm
+from sympy import Product
+from .forms import CustomUserCreationForm, ProductForm
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -40,6 +41,8 @@ from django.template.loader import get_template
 from openpyxl.styles import PatternFill
 from django.db.models.functions import Greatest, Extract
 from django.db import transaction
+from .models import Product  
+
 
 @login_required
 def home(request):
@@ -152,6 +155,47 @@ def home(request):
 @login_required
 def products(request):
     return render(request, 'core/products.html')
+
+def product_list(request):
+    products = Product.objects.filter(is_active=True)
+    return render(request, 'core/products/list.html', {'products': products})
+
+@login_required
+def product_request(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == 'POST':
+        if product.stock <= 0:
+            messages.error(request, 'Lo sentimos, este producto está agotado.')
+            return redirect('product_list')
+            
+        try:
+            with transaction.atomic():
+                # Asignar tipo de cliente basado en si es staff o no
+                customer_type = request.POST.get('customer_type', 'customer') if request.user.is_staff else 'customer'
+                
+                order = Order.objects.create(
+                    customer=request.user,
+                    customer_type=customer_type,
+                    status='pending',
+                    notes=f'Pedido del producto: {product.name}'
+                )
+                
+                product.stock -= 1
+                product.save()
+                
+                messages.success(request, 'Pedido creado exitosamente')
+                return redirect('order_detail', order.id)
+                
+        except Exception as e:
+            messages.error(request, 'Ocurrió un error al procesar el pedido. Por favor, intente nuevamente.')
+            return redirect('product_list')
+    
+    return render(request, 'core/products/request.html', {
+        'product': product,
+        'has_stock': product.stock > 0,
+        'is_staff': request.user.is_staff
+    })
 
 def exit(request):
     logout(request)
@@ -1158,3 +1202,49 @@ def customer_order_detail(request, pk):
         'status_history': status_history
     }
     return render(request, 'orders/customer_order_detail.html', context)
+
+
+
+@login_required
+def product_add(request):
+    if not request.user.is_staff:
+        messages.error(request, 'No tienes permisos para realizar esta acción.')
+        return redirect('home')
+        
+    if request.method == 'POST':
+        form = ProductForm(request.POST, request.FILES)
+        if form.is_valid():
+            product = form.save(commit=False)
+            product.created_by = request.user
+            product.save()
+            messages.success(request, 'Producto agregado exitosamente.')
+            return redirect('product_list')
+    else:
+        form = ProductForm()
+    
+    return render(request, 'core/products/form.html', {
+        'form': form,
+        'title': 'Agregar Producto'
+    })
+
+@login_required
+def product_edit(request, pk):
+    if not request.user.is_staff:
+        messages.error(request, 'No tienes permisos para realizar esta acción.')
+        return redirect('home')
+        
+    product = get_object_or_404(Product, pk=pk)
+    if request.method == 'POST':
+        form = ProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Producto actualizado exitosamente.')
+            return redirect('product_list')
+    else:
+        form = ProductForm(instance=product)
+    
+    return render(request, 'core/products/form.html', {
+        'form': form,
+        'title': 'Editar Producto',
+        'product': product
+    })
