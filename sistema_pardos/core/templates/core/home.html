@@ -17,6 +17,7 @@
 
     {% if user.is_staff %}
     <!-- Estadísticas de Pedidos -->
+    <!-- Estadísticas de Pedidos -->
     <div class="row mb-4">
         <div class="col-md-6 col-lg-3">
             <div class="card border-0 shadow-sm">
@@ -181,134 +182,93 @@
     </div>
 
     {% if user.is_staff %}
-    <!-- Pedidos Recientes para Staff -->
+    <!-- Panel colapsable de Pedidos para Staff -->
     <div class="card mt-4">
         <div class="card-header bg-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Pedidos Recientes</h5>
+            <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
+                data-bs-target="#pedidosRecientes" aria-expanded="false" aria-controls="pedidosRecientes"
+                style="cursor: pointer;">
+                <h5 class="mb-0">
+                    <i class="bi bi-chevron-down me-2"></i>
+                    Pedidos Recientes
+                </h5>
                 <a href="{% url 'order_create' %}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-circle me-1"></i>Nuevo Pedido
                 </a>
             </div>
+        </div>
 
-            <!-- Filtros -->
-            <div class="row mt-3">
-                <div class="col-md-6">
-                    <form method="get" class="d-flex gap-2">
-                        <select title="b" name="status" class="form-select form-select-sm">
-                            <option value="">Todos los estados</option>
-                            {% for value, label in order_status_choices %}
-                            <option value="{{ value }}" {% if value == selected_status %}selected="selected"{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <input placeholder="Fecha" type="date" name="date" class="form-control form-control-sm"
-                            value="{{ selected_date }}" style="width: 150px;">
-                        <button type="submit" class="btn btn-sm btn-secondary">
-                            <i class="bi bi-funnel"></i> Filtrar
-                        </button>
-                    </form>
+        <div class="collapse" id="pedidosRecientes">
+            <div class="card-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <form method="get" class="d-flex gap-2">
+                            <select title="b" name="status" class="form-select form-select-sm">
+                                <option value="">Todos los estados</option>
+                                {% for value, label in order_status_choices %}
+                                <option value="{{ value }}" {% if selected_status and value == selected_status %}selected="selected"{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <input placeholder="Fecha" type="date" name="date" class="form-control form-control-sm"
+                                value="{{ selected_date }}" style="width: 150px;">
+                            <button type="submit" class="btn btn-sm btn-secondary">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                        </form>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Cliente</th>
-                            <th>Tipo</th>
-                            <th>Estado</th>
-                            <th>Fecha</th>
-                            <th>Total m²</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in recent_orders %}
-                        <tr>
-                            <td>#{{ order.id }}</td>
-                            <td>{{ order.customer.get_full_name }}</td>
-                            <td>{{ order.get_customer_type_display }}</td>
-                            <td>
-                                <span class="badge bg-{{ order.status|status_badge }}">
-                                    {{ order.get_status_display }}
-                                </span>
-                            </td>
-                            <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
-                            <td>{{ order.total_meters|default:"--" }}</td>
-                            <td>
-                                <a title="b" href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <button title="a" type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                    data-bs-target="#updateStatusModal{{ order.id }}">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center py-3">
-                                No hay pedidos que mostrar
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <!-- Vista de Pedidos para Clientes -->
-    <div class="card mt-4">
-        <div class="card-header bg-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Mis Pedidos</h5>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Tipo</th>
-                            <th>Estado</th>
-                            <th>Fecha</th>
-                            <th>Total m²</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in recent_orders %}
-                        <tr>
-                            <td>#{{ order.id }}</td>
-                            <td>{{ order.get_customer_type_display }}</td>
-                            <td>
-                                <span class="badge bg-{{ order.status|status_badge }}">
-                                    {{ order.get_status_display }}
-                                </span>
-                            </td>
-                            <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
-                            <td>{{ order.total_meters|default:"--" }}</td>
-                            <td>
-                                <a title="a" href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center py-3">
-                                No tienes pedidos registrados
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+                <!-- Tabla -->
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Tipo</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Total m²</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.customer.get_full_name }}</td>
+                                <td>{{ order.get_customer_type_display }}</td>
+                                <td>
+                                    <span class="badge bg-{{ order.status|status_badge }}">
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ order.total_meters|default:"--" }}</td>
+                                <td>
+                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info"
+                                        title="Ver Detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                        data-bs-target="#updateStatusModal{{ order.id }}" title="Actualizar Estado">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-3">
+                                    No hay pedidos que mostrar
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -322,6 +282,121 @@
         <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-5">Iniciar Sesión</a>
     </div>
 </div>
+{% endif %}
+{% if not user.is_staff %}
+<div class="card mt-4">
+    <div class="card-header bg-white">
+        <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
+            data-bs-target="#misPedidos" aria-controls="misPedidos" style="cursor: pointer;">
+            <h5 class="mb-0">
+                <i class="bi bi-chevron-down me-2"></i>
+                Mis Últimos Pedidos
+            </h5>
+        </div>
+    </div>
+    <div class="collapse show" id="misPedidos">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Total m²</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders|slice:":5" %}
+                        <tr>
+                            <td>#{{ order.id }}</td>
+                            <td>{{ order.created_at|date:"d/m/Y" }}</td>
+                            <td>
+                                <span class="badge bg-{{ order.status|status_badge }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.total_meters|default:"--" }}</td>
+                            <td>
+                                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i> Ver Detalles
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="bi bi-inbox display-4 d-block mb-3 text-muted"></i>
+                                <p>No tienes pedidos recientes</p>
+                                <a href="{% url 'order_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-2"></i>Crear Nuevo Pedido
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de Resumen Personal -->
+<div class="row g-4 mt-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-boxes"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Total Pedidos</h6>
+                        <h3 class="mb-0">{{ orders_stats.total_month }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="stat-icon bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Pedidos Completados</h6>
+                        <h3 class="mb-0">{{ orders_stats.completed }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">En Proceso</h6>
+                        <h3 class="mb-0">{{ orders_stats.processing }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endif %}
 
 {% if user.is_staff %}
@@ -345,8 +420,7 @@
                         </label>
                         <select name="status" class="form-select">
                             {% for value, label in order_status_choices %}
-                            <option value="{{ value }}" 
-                                {% if order.status and value == order.status %}selected="selected"{% endif %}>
+                            <option value="{{ value }}" {% if order.status and value == order.status %}selected="selected"{% endif %}>
                                 {{ label }}
                             </option>
                             {% endfor %}

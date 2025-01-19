@@ -132,6 +132,21 @@ def home(request):
         'chart_data': chart_data,
         'is_staff': request.user.is_staff  
     }
+    if not request.user.is_staff:
+        # Estadísticas específicas del cliente
+        today = timezone.now().date()
+        this_month = today.replace(day=1)
+        user_orders = Order.objects.filter(customer=request.user)
+        
+        context.update({
+            'orders_stats': {
+                'total_month': user_orders.filter(created_at__date__gte=this_month).count(),
+                'completed': user_orders.filter(status__in=['completed', 'delivered']).count(),
+                'processing': user_orders.filter(status__in=['processing', 'cutting', 'edge_banding']).count(),
+            },
+            'recent_orders': user_orders.order_by('-created_at')[:5]
+        })
+    
     return render(request, 'core/home.html', context)
 
 @login_required
