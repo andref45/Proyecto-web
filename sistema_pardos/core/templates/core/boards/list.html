@@ -33,14 +33,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card stats-card">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Valor Total</h6>
-                    <h2 class="card-title mb-0">${{ total_value|floatformat:2 }}</h2>
-                </div>
-            </div>
-        </div>
+        
     </div>
 
     <!-- Lista de Tableros -->
@@ -64,7 +57,7 @@
                         <tr {% if board.needs_restock %}class="table-warning"{% endif %}>
                             <td>{{ board.material_type.name }}</td>
                             <td>
-                                <span class="d-inline-block" style="width: 20px; height: 20px; background-color: #{{ board.color.code|default:'FFFFFF' }}; border: 1px solid #ddd; vertical-align: middle;"></span>
+                                <span class="d-inline-block" style="width: 20px; height: 20px; background-color: #{{ board.color.code|default:'FFFFFF' }}; border: 1px solid #ddd; vertical-align: middle"></span>
                                 {{ board.color.name }}
                             </td>
                             <td>{{ board.width }}m × {{ board.height }}m × {{ board.thickness }}mm</td>

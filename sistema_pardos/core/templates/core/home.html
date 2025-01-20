@@ -100,7 +100,12 @@
             </div>
         </div>
         <div class="card-body">
-            <canvas id="ordersChart" height="100"></canvas>
+            <canvas id="ordersChart" 
+                    data-labels='{{ chart_data.labels|safe }}'
+                    data-orders='{{ chart_data.orders|safe }}'
+                    data-meters='{{ chart_data.meters|safe }}'
+                    height="100">
+            </canvas>
         </div>
     </div>
 
@@ -125,17 +130,6 @@
                         <h5 class="card-title mb-0">Productos Faltantes</h5>
                     </div>
                     <p class="card-text display-6">{{ products_low_stock }} items</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card stats-card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-currency-dollar stats-icon text-success me-3"></i>
-                        <h5 class="card-title mb-0">Valor Total</h5>
-                    </div>
-                    <p class="card-text display-6">${{ total_value|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
@@ -441,69 +435,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const ctx = document.getElementById('ordersChart');
-        if (ctx) {
-            const chartData = {
-                labels: JSON.parse('{{ chart_data.labels|safe }}'),
-                orders: JSON.parse('{{ chart_data.orders|safe }}'),
-                meters: JSON.parse('{{ chart_data.meters|safe }}')
-            };
-
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: chartData.labels,
-                    datasets: [{
-                        label: 'Pedidos',
-                        data: chartData.orders,
-                        borderColor: '#4b6cb7',
-                        backgroundColor: 'rgba(75, 108, 183, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        yAxisID: 'y'
-                    }, {
-                        label: 'Metros²',
-                        data: chartData.meters,
-                        borderColor: '#182848',
-                        backgroundColor: 'rgba(24, 40, 72, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        yAxisID: 'y1'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Número de Pedidos'
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Metros Cuadrados'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    });
-</script>
+<script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}

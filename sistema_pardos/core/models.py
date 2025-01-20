@@ -108,7 +108,6 @@ class Board(models.Model):
         return (timezone.now().date() - self.last_movement_date).days
     
 
-
 class Inventory(models.Model):
     """Registro de movimientos de inventario"""
     ENTRY = 'ENTRY'
@@ -363,38 +362,38 @@ class Order(models.Model):
             )
 
 
-def calculate_total_meters(self):
-    """Calcula el total de metros basado en las medidas"""
-    if self.measurements:
-        total = 0
-        for item in self.measurements:
-            largo = float(item.get('largo', 0))
-            ancho = float(item.get('ancho', 0))
-            cantidad = int(item.get('cantidad', 0))
-            total += (largo * ancho * cantidad)
-        return round(total, 2)
-    return 0
+    def calculate_total_meters(self):
+        """Calcula el total de metros basado en las medidas"""
+        if self.measurements:
+            total = 0
+            for item in self.measurements:
+                largo = float(item.get('largo', 0))
+                ancho = float(item.get('ancho', 0))
+                cantidad = int(item.get('cantidad', 0))
+                total += (largo * ancho * cantidad)
+            return round(total, 2)
+        return 0
 
-def save(self, *args, **kwargs):
-    # Si es una instancia nueva o el estado ha cambiado
-    if not self.pk or (
-        self.pk and 
-        Order.objects.filter(pk=self.pk).exists() and 
-        Order.objects.get(pk=self.pk).status != self.status
-    ):
-        # Guardar el historial después de que el pedido se guarde
-        def save_history():
-            OrderStatusHistory.objects.create(
-                order=self,
-                status=self.status,
-                created_by=getattr(self, '_current_user', None)
-            )
+    def save(self, *args, **kwargs):
+        # Si es una instancia nueva o el estado ha cambiado
+        if not self.pk or (
+            self.pk and 
+            Order.objects.filter(pk=self.pk).exists() and 
+            Order.objects.get(pk=self.pk).status != self.status
+        ):
+            # Guardar el historial después de que el pedido se guarde
+            def save_history():
+                OrderStatusHistory.objects.create(
+                    order=self,
+                    status=self.status,
+                    created_by=getattr(self, '_current_user', None)
+                )
+                
+            # Usar transaction.on_commit para asegurar que el historial se guarde
+            # solo si la transacción del pedido es exitosa
+            transaction.on_commit(save_history)
             
-        # Usar transaction.on_commit para asegurar que el historial se guarde
-        # solo si la transacción del pedido es exitosa
-        transaction.on_commit(save_history)
-        
-    super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
 class OrderStatusHistory(models.Model):
@@ -449,7 +448,6 @@ class StockAlert(models.Model):
         verbose_name = "Alerta de Stock"
         verbose_name_plural = "Alertas de Stock"
     
-    # En models.py - class StockAlert
     @classmethod
     def create_alerts(cls):
         """Sistema de alertas optimizado"""
@@ -488,7 +486,6 @@ class StockAlert(models.Model):
 
 
 
-# En models.py
 class OrderNotification(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     message = models.CharField(max_length=255)
