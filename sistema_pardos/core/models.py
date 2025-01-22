@@ -7,7 +7,7 @@ from decimal import Decimal
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum, F, Count
+from django.db.models import Sum, F
 
 
 class MaterialType(models.Model):
@@ -269,12 +269,12 @@ class Order(models.Model):
     
     # Campos de contenido
     image = models.ImageField(
-    upload_to='orders/%Y/%m/',
-    null=True, 
-    blank=True,
-    verbose_name="Imagen de Referencia",
-    help_text="Imagen opcional del proyecto o espacio (plano, boceto o fotografía)"
-)
+        upload_to='orders/%Y/%m/',
+        null=True, 
+        blank=True,
+        verbose_name="Imagen de Referencia",
+        help_text="Imagen opcional del proyecto o espacio (plano, boceto o fotografía)"
+    )
     notes = models.TextField(blank=True, verbose_name="Notas")
     measurements = models.JSONField(null=True, blank=True, verbose_name="Medidas")
     
@@ -288,8 +288,9 @@ class Order(models.Model):
 
     class Meta:
         indexes = [
-        models.Index(fields=['status', 'created_at']),
-        models.Index(fields=['customer', '-created_at'])]
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['customer', '-created_at'])
+        ]
         verbose_name = "Pedido"
         verbose_name_plural = "Pedidos"
         ordering = ['-created_at']
@@ -309,8 +310,8 @@ class Order(models.Model):
             return round(total, 2)
         return 0
 
-    # En models.py, en la clase Order
     def calculate_delivery_time(self):
+        """Calcula el tiempo estimado de entrega"""
         if not self.measurements:
             return None
 
@@ -333,67 +334,41 @@ class Order(models.Model):
         # Cálculo simplificado
         estimated_hours = max(total_meters / BASE_SPEED, MIN_TIME)
         if workload > 0:
-            estimated_hours *= 1.2  # 20% más si hay carga
+            estimated_hours *= 1.2  
         
         return timezone.now() + timedelta(hours=round(estimated_hours))
 
     def save(self, *args, **kwargs):
-        # Actualizar metros totales
-        self.total_meters = self.calculate_total_meters()
-        
-        # Actualizar tiempo estimado de entrega
-        if not self.estimated_delivery:
-            self.estimated_delivery = self.calculate_delivery_time()
+        try:
+            with transaction.atomic():
+                # Obtener estado anterior si existe
+                old_status = None
+                if self.pk:
+                    old_status = Order.objects.get(pk=self.pk).status
 
-        # Guardar el estado anterior si existe
-        old_status = None
-        if self.pk:
-            old_status = Order.objects.get(pk=self.pk).status
+                # Actualizar campos calculados
+                self.total_meters = self.calculate_total_meters()
+                if not self.estimated_delivery:
+                    self.estimated_delivery = self.calculate_delivery_time()
 
-        # Guardar el pedido
-        super().save(*args, **kwargs)
+                # Guardar el pedido
+                super().save(*args, **kwargs)
 
-        # Crear historial solo si es nuevo o cambió el estado
-        if not old_status or old_status != self.status:
-            OrderStatusHistory.objects.create(
-                order=self,
-                status=self.status,
-                created_by=getattr(self, '_current_user', None)
-            )
+                # Crear historial si es nuevo o cambió el estado
+                if not old_status or old_status != self.status:
+                    OrderStatusHistory.objects.create(
+                        order=self,
+                        status=self.status,
+                        created_by=getattr(self, '_current_user', None)
+                    )
 
+                    # Crear notificación de cambio de estado
+                    OrderNotification.create_status_notification(self, old_status)
 
-    def calculate_total_meters(self):
-        """Calcula el total de metros basado en las medidas"""
-        if self.measurements:
-            total = 0
-            for item in self.measurements:
-                largo = float(item.get('largo', 0))
-                ancho = float(item.get('ancho', 0))
-                cantidad = int(item.get('cantidad', 0))
-                total += (largo * ancho * cantidad)
-            return round(total, 2)
-        return 0
-
-    def save(self, *args, **kwargs):
-        # Si es una instancia nueva o el estado ha cambiado
-        if not self.pk or (
-            self.pk and 
-            Order.objects.filter(pk=self.pk).exists() and 
-            Order.objects.get(pk=self.pk).status != self.status
-        ):
-            # Guardar el historial después de que el pedido se guarde
-            def save_history():
-                OrderStatusHistory.objects.create(
-                    order=self,
-                    status=self.status,
-                    created_by=getattr(self, '_current_user', None)
-                )
-                
-            # Usar transaction.on_commit para asegurar que el historial se guarde
-            # solo si la transacción del pedido es exitosa
-            transaction.on_commit(save_history)
-            
-        super().save(*args, **kwargs)
+        except Exception as e:
+            # Log del error para debugging
+            print(f"Error al guardar el pedido: {str(e)}")
+            raise
 
 
 class OrderStatusHistory(models.Model):

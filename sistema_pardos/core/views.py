@@ -1,30 +1,24 @@
-from dataclasses import fields
 from functools import cache
 import json
 from django.db.models import Sum, Avg, Count, F
 from .models import StockAlert
-from tkinter.font import Font
 from arrow import now
 from django.forms import DurationField, FloatField
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required 
 from django.contrib.auth import logout
-from django.urls import reverse
-from openpyxl import Workbook
-from prompt_toolkit import HTML
 from sqlalchemy import Cast
 from sympy import Product
 from .forms import CustomUserCreationForm, ProductForm
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
-from django.contrib.auth.models import User
 from django.db.models import ExpressionWrapper
 from django.http import JsonResponse
 from decimal import Decimal
 from django.db.models import Sum, F, Count, Q
-from datetime import datetime, timedelta
+from datetime import timedelta
 from .models import MaterialType, Color, Board, Inventory, OrderNotification
-from .forms import MaterialTypeForm, ColorForm, BoardForm, InventoryMovementForm
+from .forms import MaterialTypeForm, ColorForm, BoardForm
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Sum, Avg
@@ -32,15 +26,11 @@ from .models import ProductionRecord
 from .forms import ProductionRecordForm, QuickProductionEntryForm
 import csv
 from django.http import HttpResponse
-from django.template.loader import render_to_string
-import tempfile
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Order
 from .forms import OrderForm
-from django.template.loader import get_template
-from openpyxl.styles import PatternFill
 from django.db.models.functions import Greatest, Extract
 from django.db import transaction
 from .models import Product  
@@ -336,7 +326,7 @@ def board_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, 'Tablero actualizado correctamente')
-            return redirect('board_list')
+            return redirect('board_list')  # Redirige siempre a board_list
     else:
         form = BoardForm(instance=board)
     return render(request, 'core/boards/form.html', {'form': form, 'action': 'Editar'})
@@ -435,8 +425,6 @@ def quick_production_entry(request):
 
 
 from django.http import HttpResponse
-from django.template.loader import render_to_string
-from datetime import datetime
 
 
 
@@ -446,15 +434,27 @@ def order_create(request):
     if request.method == 'POST':
         form = OrderForm(request.POST, request.FILES)
         if form.is_valid():
-            order = form.save(commit=False)
-            order.customer = request.user
-            order._current_user = request.user  # Agregar esta línea
-            order.save()
-            
-            messages.success(request, 'Pedido creado exitosamente.')
-            if 'measurements' in request.POST:
-                return redirect('order_measurements', pk=order.pk)
-            return redirect('order_detail', pk=order.pk)  # Redirigir al detalle del pedido
+            try:
+                with transaction.atomic():
+                    order = form.save(commit=False)
+                    order.customer = request.user
+                    order._current_user = request.user
+                    order.save()
+                    
+                    # Si el botón presionado fue "Guardar y Agregar Medidas"
+                    if 'measurements' in request.POST:
+                        return redirect('order_measurements', pk=order.pk)
+                    
+                    # Si fue el botón "Guardar Pedido"
+                    messages.success(request, 'Pedido creado exitosamente.')
+                    return redirect('order_detail', pk=order.pk)
+                    
+            except Exception as e:
+                messages.error(request, f'Error al crear el pedido: {str(e)}')
+                return render(request, 'core/orders/form.html', {
+                    'form': form, 
+                    'title': 'Nuevo Pedido'
+                })
     else:
         form = OrderForm()
     
@@ -505,38 +505,40 @@ def order_update_status(request, pk):
             
     return redirect('order_detail', pk=pk)
 
-
-# En views.py
 @login_required
 def order_measurements(request, pk):
     order = get_object_or_404(Order.objects.select_related('customer'), pk=pk)
     
+    # Verificar permisos
+    if not request.user.is_staff and order.customer != request.user:
+        messages.error(request, 'No tienes permiso para modificar este pedido.')
+        return redirect('home')
+    
     if request.method == 'POST':
         try:
-            with transaction.atomic():
-                data = json.loads(request.body)
-                measurements = data.get('measurements', [])
-                
-                # Validación rápida
-                for m in measurements:
-                    if not all(0 < m.get(k, 0) <= limit for k, limit in [
-                        ('largo', 3.66), ('ancho', 2.44)
-                    ]):
-                        raise ValueError('Medidas inválidas')
-                
-                order.measurements = measurements
-                order.save()
-                
-                # Invalidar caché
-                cache.delete(f'order_details_{pk}')
-                
-                return JsonResponse({'success': True})
-                
+            data = json.loads(request.body)
+            measurements = data.get('measurements', [])
+            
+            # Validación de medidas
+            for measurement in measurements:
+                if not all(0 < measurement.get(k, 0) <= limit for k, limit in [
+                    ('largo', 3.66), ('ancho', 2.44)
+                ]):
+                    raise ValueError('Medidas fuera de rango permitido')
+            
+            order.measurements = measurements
+            order.save()
+            
+            messages.success(request, 'Medidas guardadas exitosamente.')
+            return JsonResponse({'success': True})
+            
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
-            
-    return render(request, 'core/orders/measurements.html', {'order': order})
-
+    
+    return render(request, 'core/orders/measurements.html', {
+        'order': order,
+        'title': 'Registrar Medidas'
+    })
 
 @login_required
 def inventory_dashboard(request):
@@ -679,7 +681,7 @@ def export_production_csv(request):
             record.date.strftime('%d/%m/%Y'),
             record.start_time.strftime('%H:%M') if record.start_time else '',
             record.end_time.strftime('%H:%M') if record.end_time else '',
-            f"{record.meters_cut:.2f}",  # Sin 'm' para facilitar uso en Excel
+            f"{record.meters_cut:.2f}",  
             record.pieces_cut,
             f"{record.edges_applied:.2f}" if record.edges_applied else '0.00',
             f"{record.waste_percentage:.1f}"
@@ -687,7 +689,6 @@ def export_production_csv(request):
     
     return response
 
-# Función auxiliar que podrías usar si necesitas el formato del operador en otros lugares
 def get_operator_display_name(operator):
     """
     Obtiene el nombre de visualización del operador de manera consistente
@@ -733,37 +734,6 @@ def board_rotation_report(request):
     }
     return render(request, 'reports/board_rotation.html', context)
 
-@login_required
-def production_efficiency(request):
-    """Vista para el análisis de eficiencia de producción"""
-    today = timezone.now().date()
-    start_date = today - timedelta(days=30)
-    
-    records = ProductionRecord.objects.filter(
-        date__range=[start_date, today]
-    ).select_related('operator')
-
-    # Análisis por operador
-    operator_stats = records.values(
-        'operator__username'
-    ).annotate(
-        total_hours=Sum(
-            ExpressionWrapper(
-                F('end_time') - F('start_time'),
-                output_field=DurationField()
-            )
-        ),
-        total_meters=Sum('meters_cut'),
-        total_pieces=Sum('pieces_cut'),
-        avg_waste=Avg('waste_percentage')
-    )
-
-    context = {
-        'operator_stats': operator_stats,
-        'start_date': start_date,
-        'end_date': today,
-    }
-    return render(request, 'production/efficiency.html', context)
 
 @login_required
 def material_movement_history(request, board_id):
@@ -793,42 +763,13 @@ def low_stock_alert(request):
     }
     return render(request, 'inventory/low_stock_alert.html', context)
 
-@login_required
-def dashboard_realtime(request):
-    today = timezone.now().date()
-    
-    # Usar select_related para reducir queries
-    recent_orders = Order.objects.select_related('customer').filter(
-        created_at__date=today
-    ).order_by('-created_at')[:5]
-
-    context = {
-        'orders': recent_orders,
-        'stats': {
-            'pending_orders': Order.objects.filter(status='pending').count(),
-            'active_orders': Order.objects.filter(
-                status__in=['processing', 'cutting']
-            ).count(),
-            'completed_today': Order.objects.filter(
-                status='completed',
-                updated_at__date=today
-            ).count()
-        },
-        'alerts': StockAlert.objects.filter(is_active=True)[:5]
-    }
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse(context)
-    
-    return render(request, 'core/dashboard.html', context)
 
 @login_required
 def update_alerts(request):
     """Vista para generar y actualizar alertas"""
-    StockAlert.create_alerts()  # Método que creamos en el modelo
+    StockAlert.create_alerts()  
     return JsonResponse({'success': True})
 
-# En views.py, agrega esta nueva función
 @login_required
 def update_dashboard_data(request):
     """Endpoint para actualizar datos del dashboard vía AJAX"""
@@ -842,7 +783,6 @@ def update_dashboard_data(request):
         avg_waste=Avg('waste_percentage')
     )
     
-    # Actualizar alertas
     StockAlert.create_alerts()
     
     return JsonResponse({
@@ -851,97 +791,6 @@ def update_dashboard_data(request):
             is_active=True
         ).values('message', 'alert_type', 'created_at')[:5])
     })
-
-
-
-@login_required
-def operator_metrics(request):
-    """Vista para mostrar métricas de operadores"""
-    # Obtener el rango de fechas seleccionado
-    time_range = request.GET.get('range', 'day')
-    today = timezone.now().date()
-    
-    # Determinar fecha inicial según el rango
-    if time_range == 'week':
-        start_date = today - timedelta(days=7)
-    elif time_range == 'month':
-        start_date = today - timedelta(days=30)
-    else:  # day
-        start_date = today
-
-    # Obtener estadísticas de operadores
-    operators = ProductionRecord.objects.filter(
-        date__range=[start_date, today]
-    ).values(
-        'operator__username',
-        'operator__first_name'
-    ).annotate(
-        total_meters=Sum('meters_cut'),
-        total_pieces=Sum('pieces_cut'),
-        avg_efficiency=100 - Avg('waste_percentage'),
-        pieces_per_hour=Cast(Sum('pieces_cut'), FloatField()) / 
-                       Greatest(Sum(
-                           Extract('end_time', 'hour') - Extract('start_time', 'hour')
-                       ), 1)
-    )
-
-    # Preparar datos para los gráficos
-    dates = []
-    production_data = []
-    current_date = start_date
-    
-    while current_date <= today:
-        dates.append(current_date.strftime('%d/%m'))
-        daily_production = ProductionRecord.objects.filter(
-            date=current_date
-        ).values(
-            'operator__username'
-        ).annotate(
-            total_meters=Sum('meters_cut')
-        )
-        
-        production_data.append({
-            'date': current_date.strftime('%d/%m'),
-            'data': {p['operator__username']: p['total_meters'] for p in daily_production}
-        })
-        current_date += timedelta(days=1)
-
-    # Preparar datasets para el gráfico de producción
-    operator_names = list(set(op['operator__username'] for op in operators))
-    production_datasets = []
-    
-    for operator in operator_names:
-        dataset = {
-            'label': operator,
-            'data': [p['data'].get(operator, 0) for p in production_data],
-            'borderColor': f'hsl({hash(operator) % 360}, 70%, 50%)',
-            'fill': False
-        }
-        production_datasets.append(dataset)
-
-    # Preparar datos de eficiencia
-    efficiency_data = [op['avg_efficiency'] for op in operators]
-
-    # Si es una solicitud AJAX, devolver JSON
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'dates': dates,
-            'production_datasets': production_datasets,
-            'operator_names': operator_names,
-            'efficiency_data': efficiency_data
-        })
-
-    # Para la carga inicial de la página, pasar contexto al template
-    context = {
-        'operators': operators,
-        'dates': json.dumps(dates),
-        'production_datasets': json.dumps(production_datasets),
-        'operator_names': json.dumps(operator_names),
-        'efficiency_data': json.dumps(efficiency_data)
-    }
-    
-    return render(request, 'core/operator_metrics.html', context)
-
 
 
 @login_required
@@ -968,7 +817,7 @@ def dashboard_data(request):
             'last_update': now().isoformat()
         }
         
-        cache.set(cache_key, data, 60)  # Cache por 1 minuto
+        cache.set(cache_key, data, 60)
     
     return JsonResponse(data)
 
@@ -1028,8 +877,6 @@ def customer_order_detail(request, pk):
     }
     return render(request, 'orders/customer_order_detail.html', context)
 
-
-
 @login_required
 def product_add(request):
     if not request.user.is_staff:
@@ -1073,3 +920,61 @@ def product_edit(request, pk):
         'title': 'Editar Producto',
         'product': product
     })
+
+
+@login_required
+def quick_entry(request, board_id):
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'No autorizado'})
+        
+    if request.method == 'POST':
+        try:
+            board = get_object_or_404(Board, pk=board_id)
+            quantity = int(request.POST.get('quantity', 0))
+            
+            if quantity <= 0:
+                return JsonResponse({'success': False, 'error': 'La cantidad debe ser mayor a 0'})
+            
+            # Usar transacción para mayor seguridad
+            with transaction.atomic():
+                # Actualizar directamente el stock del tablero
+                board.stock += quantity
+                board.save()
+                
+                # Crear registro de inventario
+                Inventory.objects.create(
+                    board=board,
+                    movement_type='ENTRY',
+                    quantity=quantity,
+                    price=board.price_per_m2,
+                    created_by=request.user,
+                    notes='Entrada rápida de stock'
+                )
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'Stock actualizado: +{quantity} unidades',
+                'new_stock': board.stock
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+@login_required
+def board_edit(request, pk):
+    board = get_object_or_404(Board, pk=pk)
+    if request.method == 'POST':
+        form = BoardForm(request.POST, instance=board)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Tablero actualizado correctamente')
+            return redirect('board_list')
+        else:
+            # Si hay errores en el formulario, mostrarlos
+            for field, errors in form.errors.items():
+                messages.error(request, f"{field}: {', '.join(errors)}")
+    else:
+        form = BoardForm(instance=board)
+    return render(request, 'core/boards/form.html', {'form': form, 'action': 'Editar'})

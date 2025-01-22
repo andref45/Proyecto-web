@@ -61,6 +61,15 @@
                         <div class="text-danger">{{ form.minimum_stock.errors }}</div>
                     {% endif %}
                 </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Stock Actual</label>
+                        {{ form.stock }}
+                        {% if form.stock.errors %}
+                        <div class="text-danger">{{ form.stock.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
             <div class="mb-3 form-check">
                 {{ form.is_active }}
@@ -70,9 +79,7 @@
                 <a href="{% url 'board_list' %}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left me-2"></i>Volver
                 </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save me-2"></i>Guardar
-                </button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
             </div>
         </form>
     </div>

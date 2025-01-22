@@ -13,12 +13,6 @@ urlpatterns = [
     path('products/add/', views.product_add, name='product_add'),
     path('products/<int:pk>/edit/', views.product_edit, name='product_edit'),
 
-    # URLs Dashboard y Datos en tiempo real
-    path('dashboard/realtime/', views.dashboard_realtime, name='dashboard_realtime'),
-    path('dashboard/update-data/', views.update_dashboard_data, name='update_dashboard_data'),
-    path('inventory/dashboard-data/', views.dashboard_data, name='dashboard_data'),
-    path('production/dashboard/', views.production_dashboard, name='production_dashboard'),
-    path('production/add/', views.production_add, name='production_add'),
 
     # URLs Inventario
     path('inventory/dashboard/', views.inventory_dashboard, name='inventory_dashboard'),
@@ -39,8 +33,8 @@ urlpatterns = [
     path('boards/', views.board_list, name='board_list'),
     path('boards/add/', views.board_add, name='board_add'),
     path('boards/<int:pk>/edit/', views.board_edit, name='board_edit'),
+    path('boards/<int:board_id>/quick-entry/', views.quick_entry, name='quick_entry'),  
     path('boards/<int:pk>/delete/', views.board_delete, name='board_delete'),
-
     # URLs Pedidos
     path('orders/create/', views.order_create, name='order_create'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
@@ -57,11 +51,6 @@ urlpatterns = [
     path('production/<int:pk>/delete/', views.production_delete, name='production_record_delete'),
     path('production/quick-entry/', views.quick_production_entry, name='quick_production_entry'),
     path('production/export/csv/', views.export_production_csv, name='export_production_csv'),
-    path('production/efficiency/', views.production_efficiency, name='production_efficiency'),
-
-    # URLs Reportes y Métricas
-    path('reports/board-rotation/', views.board_rotation_report, name='board_rotation_report'),
-    path('operator-metrics/', views.operator_metrics, name='operator_metrics'),
 
     # URLs Alertas y Notificaciones
     path('alerts/update/', views.update_alerts, name='update_alerts'),

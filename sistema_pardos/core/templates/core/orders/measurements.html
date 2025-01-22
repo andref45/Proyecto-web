@@ -3,24 +3,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/home.css' %}">
-<style>
-    .measurement-row {
-        background-color: #fff;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .measurement-row:hover {
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .subtotal {
-        font-weight: 500;
-        color: #4b6cb7;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/measurements.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -32,11 +15,14 @@
 
     <div class="card">
         <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                Las medidas máximas permitidas son: Largo: 3.66m, Ancho: 2.44m
+            </div>
+
             <form id="measurementForm" method="post">
                 {% csrf_token %}
-                <div id="measurementsList">
-                    <!-- Las filas de medidas serán agregadas aquí -->
-                </div>
+                <div id="measurementsList"></div>
 
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <button type="button" class="btn btn-secondary" id="addRow">
@@ -48,7 +34,7 @@
                 <hr>
 
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
                         <i class="bi bi-save me-2"></i>Guardar Medidas
                     </button>
                     <a href="{% url 'order_detail' order.id %}" class="btn btn-secondary">
@@ -63,124 +49,8 @@
 
 {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const measurementsList = document.getElementById('measurementsList');
-        const addRowBtn = document.getElementById('addRow');
-        const form = document.getElementById('measurementForm');
-
-        // Obtener el ID del pedido
-        const orderId = "{{ order.id }}";
-
-        function createMeasurementRow() {
-            const row = document.createElement('div');
-            row.className = 'measurement-row';
-            row.innerHTML = `
-            <div class="row align-items-center">
-                <div class="col-md-3 mb-2 mb-md-0">
-                    <div class="input-group">
-                        <input type="number" step="0.01" name="largo[]" class="form-control" 
-                               placeholder="Largo (m)" required onchange="calculateTotals()">
-                        <span class="input-group-text">m</span>
-                    </div>
-                </div>
-                <div class="col-md-3 mb-2 mb-md-0">
-                    <div class="input-group">
-                        <input type="number" step="0.01" name="ancho[]" class="form-control" 
-                               placeholder="Ancho (m)" required onchange="calculateTotals()">
-                        <span class="input-group-text">m</span>
-                    </div>
-                </div>
-                <div class="col-md-2 mb-2 mb-md-0">
-                    <input type="number" name="cantidad[]" class="form-control" 
-                           placeholder="Cantidad" required onchange="calculateTotals()">
-                </div>
-                <div class="col-md-3 mb-2 mb-md-0">
-                    <span class="subtotal"></span>
-                </div>
-                <div class="col-md-1">
-                    <button type="button" class="btn btn-danger btn-sm remove-row">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>`;
-
-            row.querySelector('.remove-row').addEventListener('click', function () {
-                row.remove();
-                calculateTotals();
-            });
-
-            measurementsList.appendChild(row);
-            calculateTotals();
-        }
-
-        window.calculateTotals = function () {
-            let total = 0;
-            const rows = document.querySelectorAll('.measurement-row');
-
-            rows.forEach(row => {
-                const largo = parseFloat(row.querySelector('[name="largo[]"]').value) || 0;
-                const ancho = parseFloat(row.querySelector('[name="ancho[]"]').value) || 0;
-                const cantidad = parseInt(row.querySelector('[name="cantidad[]"]').value) || 0;
-
-                const subtotal = largo * ancho * cantidad;
-                total += subtotal;
-
-                row.querySelector('.subtotal').textContent =
-                    subtotal > 0 ? `${subtotal.toFixed(2)} m²` : '';
-            });
-
-            document.getElementById('totalMeters').textContent =
-                `Total: ${total.toFixed(2)} m²`;
-        };
-
-        addRowBtn.addEventListener('click', createMeasurementRow);
-
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            const measurements = [];
-            const rows = document.querySelectorAll('.measurement-row');
-
-            rows.forEach(row => {
-                const largo = parseFloat(row.querySelector('[name="largo[]"]').value);
-                const ancho = parseFloat(row.querySelector('[name="ancho[]"]').value);
-                const cantidad = parseInt(row.querySelector('[name="cantidad[]"]').value);
-
-                if (largo && ancho && cantidad) {
-                    measurements.push({ largo, ancho, cantidad });
-                }
-            });
-
-            if (measurements.length === 0) {
-                alert('Por favor, ingrese al menos una medida');
-                return;
-            }
-
-            fetch(`/orders/${orderId}/measurements/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: JSON.stringify({ measurements: measurements })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Medidas guardadas exitosamente');
-                        window.location.href = '{% url "home" %}';
-                    } else {
-                        alert('Error al guardar las medidas: ' + (data.error || 'Error desconocido'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al procesar la solicitud');
-                });
-        });
-
-        // Crear primera fila al cargar
-        createMeasurementRow();
-    });
+    var orderId = "{{ order.id }}";
+    var orderDetailUrl = "{% url 'order_detail' order.id %}";
 </script>
+<script src="{% static 'js/measurements.js' %}"></script>
 {% endblock %}

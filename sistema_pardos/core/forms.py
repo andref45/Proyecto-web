@@ -40,8 +40,7 @@ class ColorForm(forms.ModelForm):
 class BoardForm(forms.ModelForm):
     class Meta:
         model = Board
-        fields = ['material_type', 'color', 'thickness', 'width', 'height', 
-                 'price_per_m2', 'minimum_stock', 'is_active']
+        fields = ['material_type', 'color', 'thickness', 'width', 'height', 'price_per_m2', 'minimum_stock', 'stock', 'is_active']
         widgets = {
             'material_type': forms.Select(attrs={'class': 'form-control'}),
             'color': forms.Select(attrs={'class': 'form-control'}),
@@ -50,6 +49,7 @@ class BoardForm(forms.ModelForm):
             'height': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'price_per_m2': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'minimum_stock': forms.NumberInput(attrs={'class': 'form-control'}),
+             'stock': forms.NumberInput(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
@@ -130,53 +130,6 @@ class DateRangeForm(forms.Form):
             raise ValidationError('La fecha inicial no puede ser posterior a la fecha final')
         
         return cleaned_data
-    
-
-class MaterialTypeForm(forms.ModelForm):
-    class Meta:
-        model = MaterialType
-        fields = ['name', 'description']
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-        }
-
-class ColorForm(forms.ModelForm):
-    class Meta:
-        model = Color
-        fields = ['name', 'code', 'is_active']
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'code': forms.TextInput(attrs={'class': 'form-control'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-
-class BoardForm(forms.ModelForm):
-    class Meta:
-        model = Board
-        fields = ['material_type', 'color', 'thickness', 'width', 'height', 
-                 'price_per_m2', 'minimum_stock', 'is_active']
-        widgets = {
-            'material_type': forms.Select(attrs={'class': 'form-control'}),
-            'color': forms.Select(attrs={'class': 'form-control'}),
-            'thickness': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'width': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'height': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'price_per_m2': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'minimum_stock': forms.NumberInput(attrs={'class': 'form-control'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-
-class InventoryMovementForm(forms.ModelForm):
-    class Meta:
-        model = Inventory
-        fields = ['board', 'quantity', 'price', 'notes']
-        widgets = {
-            'board': forms.Select(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-        }
 
 class ProductionRecordForm(forms.ModelForm):
     class Meta:
@@ -326,7 +279,6 @@ class OrderForm(forms.ModelForm):
         for field in self.fields:
             if field != 'image':
                 self.fields[field].required = False  
-
 
 class ProductForm(forms.ModelForm):
     class Meta:

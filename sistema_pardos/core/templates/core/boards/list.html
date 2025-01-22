@@ -33,7 +33,7 @@
                 </div>
             </div>
         </div>
-        
+
     </div>
 
     <!-- Lista de Tableros -->
@@ -54,15 +54,17 @@
                     </thead>
                     <tbody>
                         {% for board in boards %}
-                        <tr {% if board.needs_restock %}class="table-warning"{% endif %}>
+                        <tr {% if board.needs_restock %}class="table-warning" {% endif %}>
                             <td>{{ board.material_type.name }}</td>
                             <td>
-                                <span class="d-inline-block" style="width: 20px; height: 20px; background-color: #{{ board.color.code|default:'FFFFFF' }}; border: 1px solid #ddd; vertical-align: middle"></span>
+                                <span class="d-inline-block"
+                                    style="width: 20px; height: 20px; background-color: #{{ board.color.code|default:'FFFFFF' }}; border: 1px solid #ddd; vertical-align: middle"></span>
                                 {{ board.color.name }}
                             </td>
                             <td>{{ board.width }}m × {{ board.height }}m × {{ board.thickness }}mm</td>
                             <td>
-                                <span class="badge {% if board.needs_restock %}bg-warning{% else %}bg-success{% endif %}">
+                                <span
+                                    class="badge {% if board.needs_restock %}bg-warning{% else %}bg-success{% endif %}">
                                     {{ board.stock }}
                                 </span>
                             </td>
@@ -70,15 +72,12 @@
                             <td>{{ board.last_movement_date|date:"d/m/Y" }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <button title="boton" type="button" class="btn btn-primary" 
-                                            onclick="quickEntry('{{ board.id }}')">
-                                        <i class="bi bi-plus"></i>
-                                    </button>
-                                    <a title="board_edit" href="{% url 'board_edit' board.id %}" class="btn btn-secondary">
+                                    <a title="board_edit" href="{% url 'board_edit' board.id %}"
+                                        class="btn btn-secondary">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <button title="boton" type="button" class="btn btn-danger" 
-                                            onclick="confirmDelete('{{ board.id }}')">
+                                    <button title="boton" type="button" class="btn btn-danger"
+                                        onclick="confirmDelete('{{ board.id }}')">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
@@ -119,13 +118,14 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Color</label>
-                        <select  title="boton"name="color" class="form-select">
+                        <select title="boton" name="color" class="form-select">
                             <option value="">Todos</option>
                             {% for color in colors %}
-                                <option value="{{ color.id }}"
-                                        {% if request.GET.color|add:"0" == color.id %}selected{% endif %}>
-                                    {{ color.name }}
-                                </option>
+                                {% with color_id=request.GET.color|add:"0" %}
+                                    <option value="{{ color.id }}" {% if color_id == color.id %}selected{% endif %}>
+                                        {{ color.name }}
+                                    </option>
+                                {% endwith %}
                             {% endfor %}
                         </select>
                     </div>
@@ -147,18 +147,7 @@
         </div>
     </div>
 </div>
-
-{% block extra_js %}
-<script>
-function quickEntry(boardId) {
-    // Implementar entrada rápida de inventario
-}
-
-function confirmDelete(boardId) {
-    if (confirm('¿Estás seguro de que deseas eliminar este tablero?')) {
-        window.location.href = `/boards/${boardId}/delete/`;
-    }
-}
-</script>
 {% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/quickEntry.js' %}"></script>
 {% endblock %}
