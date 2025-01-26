@@ -263,6 +263,7 @@
     padding: 8rem 0;
     margin: 4rem 0;
     position: relative;
+    z-index: 1;
 }
 
 .services-section::before {
@@ -270,12 +271,35 @@
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.7);
+    z-index: -1;
 }
 
 .service-card {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem; 
+    border-radius: 15px; 
+    color: #333; 
+    transition: all 0.3s ease;
+}
+
+.service-card h4 {
+    color: var(--secondary-color); 
+    margin-bottom: 1rem; 
+}
+
+.service-features {
+    list-style: none; 
+    padding: 0; 
+    margin: 1rem 0 0; 
+}
+
+.service-features li {
+    display: flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+    margin-bottom: 0.5rem; 
 }
 
 .service-card:hover {
@@ -631,4 +655,83 @@
     height: 100px;
     background: linear-gradient(to bottom, transparent 0%, white 100%);
     pointer-events: none;
+}
+
+
+/* Estilos para elementos colapsables */
+[data-collapse-toggle] {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Transición del icono */
+[data-collapse-toggle] .bi-chevron-down {
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+/* Contenedor colapsable */
+.collapse-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    max-height: 0;
+}
+
+.collapse-content.show {
+    max-height: 2000px; /* Altura máxima para el contenido */
+}
+
+/* Efectos hover */
+[data-collapse-toggle]:hover {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Animación del contenido */
+.collapse-content {
+    opacity: 0;
+    transition: opacity 0.3s ease-out, max-height 0.3s ease-out;
+}
+
+.collapse-content.show {
+    opacity: 1;
+}
+
+/* Mejoras visuales para la tabla */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Estado vacío mejorado */
+.empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.empty-state:hover {
+    opacity: 1;
+}
+
+/* Accesibilidad - outline al focus */
+[data-collapse-toggle]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+
+/* Fondos de secciones */
+.services-bg {
+    background-image: url('../img/woodwork-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+.hero-bg {
+    background-image: url('../img/wood-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
 }

@@ -202,9 +202,9 @@
                             <select title="b" name="status" class="form-select form-select-sm">
                                 <option value="">Todos los estados</option>
                                 {% for value, label in order_status_choices %}
-                                <option value="{{ value }}" {% if selected_status and value == selected_status %}selected="selected" {% endif %}>
-                                    {{ label }}
-                                </option>
+                                    <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
                                 {% endfor %}
                             </select>
                             <input placeholder="Fecha" type="date" name="date" class="form-control form-control-sm"
@@ -244,10 +244,12 @@
                                 <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
                                 <td>{{ order.total_meters|default:"--" }}</td>
                                 <td>
-                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info" title="Ver Detalles">
+                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info"
+                                        title="Ver Detalles">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal{{ order.id }}" title="Actualizar Estado">
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                        data-bs-target="#updateStatusModal{{ order.id }}" title="Actualizar Estado">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 </td>
@@ -285,7 +287,7 @@
                             </label>
                             <select name="status" class="form-select">
                                 {% for value, label in order_status_choices %}
-                                    <option value="{{ value }}" {% if order.status == value %}selected="selected"{% endif %}>
+                                    <option value="{{ value }}" {% if value|stringformat:"s" == order.status|stringformat:"s" %}selected{% endif %}>
                                         {{ label }}
                                     </option>
                                 {% endfor %}
@@ -304,19 +306,19 @@
 </div>
 
 {% else %}
-<div class="hero-section" style="background-image: url('{% static 'img/wood-bg.jpg' %}')">
+<div class="hero-section hero-bg">
     <div class="hero-overlay"></div>
     <div class="container position-relative">
-        <div class="hero-content">
-            <div class="hero-content" data-animation="animate__fadeIn">
-                <span class="hero-badge" data-animation="animate__fadeInDown">Primera Calidad</span>
-                <h1 class="mega-title" data-animation="animate__fadeInUp">Expertos en Tableros y Melamina</h1>
-                <p class="hero-subtitle" data-animation="animate__fadeInUp">Soluciones profesionales para tus proyectos de carpintería</p>
-            </div>
+        <div class="hero-content" data-animation="animate__fadeIn">
+            <span class="hero-badge" data-animation="animate__fadeInDown">Primera Calidad</span>
+            <h1 class="mega-title" data-animation="animate__fadeInUp">Expertos en Tableros y Melamina</h1>
+            <p class="hero-subtitle" data-animation="animate__fadeInUp">Soluciones profesionales para tus proyectos
+                de carpintería</p>
+            <div class="hero-actions">
                 <a href="{% url 'order_create' %}" class="btn btn-primary btn-lg">
                     <i class="bi bi-plus-circle me-2"></i>Cotizar Ahora
                 </a>
-                <a href="#productos" class="btn btn-outline-light btn-lg ms-3">
+                <a href="#productos" class="btn btn-outline-light btn-lg">
                     Ver Catálogo <i class="bi bi-arrow-right ms-2"></i>
                 </a>
             </div>
@@ -417,70 +419,68 @@
 <div class="section-divider"></div>
 
 <!-- Services Section -->
-<section class="services-section parallax-section" style="background-image: url('{% static 'img/woodwork-bg.jpg' %}')">
-    <div class="parallax-overlay"></div>
-    <div class="container position-relative">
-        <div class="section-header text-center text-white mb-5">
-            <h6 class="text-light fw-bold">SERVICIOS</h6>
-            <h2 class="display-5 fw-bold">Servicios Profesionales</h2>
-            <p class="lead">Soluciones integrales para tus proyectos</p>
+<section class="services-section parallax-section services-bg">
+    <div class="section-header text-center text-white mb-5">
+        <div class="parallax-overlay"></div>
+        <div class="container position-relative">
+            <div class="section-header text-center text-white mb-5">
+                <h6 class="text-light fw-bold">SERVICIOS</h6>
+                <h2 class="display-5 fw-bold">Servicios Profesionales</h2>
+                <p class="lead">Soluciones integrales para tus proyectos</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="service-card" data-animation="animate__fadeInUp">
+                        <div class="service-icon-wrapper">
+                            <i class="bi bi-rulers"></i>
+                        </div>
+                        <h4>Corte a Medida</h4>
+                        <p>Optimización y corte según tus especificaciones exactas. Aprovechamiento máximo del material.
+                        </p>
+                        <ul class="service-features">
+                            <li><i class="bi bi-check2"></i> Cortes precisos</li>
+                            <li><i class="bi bi-check2"></i> Optimización de material</li>
+                            <li><i class="bi bi-check2"></i> Acabado profesional</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="service-card h-100">
+                        <div class="service-icon-wrapper">
+                            <i class="bi bi-tools"></i>
+                        </div>
+                        <h4>Enchapado</h4>
+                        <p>Aplicación de tapacantos en PVC y melamina con tecnología de última generación.</p>
+                        <ul class="service-features">
+                            <li><i class="bi bi-check2"></i> Tapacanto PVC</li>
+                            <li><i class="bi bi-check2"></i> Acabado perfecto</li>
+                            <li><i class="bi bi-check2"></i> Alta durabilidad</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="service-card h-100">
+                        <div class="service-icon-wrapper">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <h4>Despacho</h4>
+                        <p>Servicio de entrega coordinado y seguro en toda la región metropolitana.</p>
+                        <ul class="service-features">
+                            <li><i class="bi bi-check2"></i> Entrega programada</li>
+                            <li><i class="bi bi-check2"></i> Seguimiento en línea</li>
+                            <li><i class="bi bi-check2"></i> Transporte seguro</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="service-card" data-animation="animate__fadeInUp">
-                    <div class="service-icon-wrapper">
-                        <i class="bi bi-rulers"></i>
-                    </div>
-                    <h4>Corte a Medida</h4>
-                    <p>Optimización y corte según tus especificaciones exactas. Aprovechamiento máximo del material.</p>
-                    <ul class="service-features">
-                        <li><i class="bi bi-check2"></i> Cortes precisos</li>
-                        <li><i class="bi bi-check2"></i> Optimización de material</li>
-                        <li><i class="bi bi-check2"></i> Acabado profesional</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="service-card h-100">
-                    <div class="service-icon-wrapper">
-                        <i class="bi bi-tools"></i>
-                    </div>
-                    <h4>Enchapado</h4>
-                    <p>Aplicación de tapacantos en PVC y melamina con tecnología de última generación.</p>
-                    <ul class="service-features">
-                        <li><i class="bi bi-check2"></i> Tapacanto PVC</li>
-                        <li><i class="bi bi-check2"></i> Acabado perfecto</li>
-                        <li><i class="bi bi-check2"></i> Alta durabilidad</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="service-card h-100">
-                    <div class="service-icon-wrapper">
-                        <i class="bi bi-truck"></i>
-                    </div>
-                    <h4>Despacho</h4>
-                    <p>Servicio de entrega coordinado y seguro en toda la región metropolitana.</p>
-                    <ul class="service-features">
-                        <li><i class="bi bi-check2"></i> Entrega programada</li>
-                        <li><i class="bi bi-check2"></i> Seguimiento en línea</li>
-                        <li><i class="bi bi-check2"></i> Transporte seguro</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
 </section>
 
 <!-- Lista de Pedidos Recientes -->
 <div class="card shadow-sm mb-4">
-    <div class="card-header bg-white">
-        <div class="d-flex justify-content-between align-items-center" 
-             data-bs-toggle="collapse" 
-             data-bs-target="#clientOrdersList" 
-             role="button"
-             aria-expanded="false"
-             aria-controls="clientOrdersList">
+    <div class="card-header bg-white" data-collapse-toggle="clientOrdersList" role="button" aria-expanded="false"
+        aria-controls="clientOrdersList">
+        <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
                 <i class="bi bi-chevron-down me-2"></i>
                 <h5 class="mb-0">Mis Pedidos Recientes</h5>
@@ -489,7 +489,7 @@
         </div>
     </div>
 
-    <div class="collapse" id="clientOrdersList">
+    <div id="clientOrdersList" class="collapse-content">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -514,8 +514,7 @@
                             </td>
                             <td>{{ order.total_meters|default:"-"|floatformat:2 }} m²</td>
                             <td class="text-end">
-                                <a href="{% url 'order_detail' order.id %}" 
-                                   class="btn btn-sm btn-outline-primary">
+                                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-eye me-1"></i>Ver Detalles
                                 </a>
                             </td>
@@ -523,8 +522,8 @@
                         {% empty %}
                         <tr>
                             <td colspan="5">
-                                <div class="empty-state py-5">
-                                    <i class="bi bi-inbox display-4 text-muted mb-3"></i>
+                                <div class="empty-state">
+                                    <i class="bi bi-inbox display-4 text-muted mb-3 d-block"></i>
                                     <h5>No tienes pedidos recientes</h5>
                                     <p class="text-muted mb-3">Comienza creando tu primer pedido</p>
                                     <a href="{% url 'order_create' %}" class="btn btn-primary">
@@ -616,4 +615,5 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'js/dashboard.js' %}"></script>
 <script src="{% static 'js/client-home.js' %}"></script>
+<script src="{% static 'js/collapsibleOrders.js' %}"></script>
 {% endblock %}
