@@ -523,23 +523,18 @@
 
 /* Orders List Collapse */
 .card-header[data-bs-toggle="collapse"] {
-    transition: background-color 0.3s ease;
     cursor: pointer;
 }
 
-.card-header[data-bs-toggle="collapse"]:hover {
-    background-color: #f8f9fa !important;
-}
-
-.card-header .bi-chevron-down {
+.bi-chevron-down {
     transition: transform 0.3s ease;
 }
 
-.collapsed .bi-chevron-down {
-    transform: rotate(-90deg);
+.card-header:hover {
+    background-color: #f8f9fa;
 }
 
-/* Añade esto a tu home.css */
+
 .fade-in-section {
     opacity: 0;
     transform: translateY(20px);

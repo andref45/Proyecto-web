@@ -472,18 +472,24 @@
     </div>
 </section>
 
+<!-- Lista de Pedidos Recientes -->
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-white">
-        <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#listaPedidos" role="button" aria-expanded="false" aria-controls="listaPedidos">
+        <div class="d-flex justify-content-between align-items-center" 
+             data-bs-toggle="collapse" 
+             data-bs-target="#clientOrdersList" 
+             role="button"
+             aria-expanded="false"
+             aria-controls="clientOrdersList">
             <div class="d-flex align-items-center">
-                <i class="bi bi-chevron-down me-2 collapse-icon"></i>
+                <i class="bi bi-chevron-down me-2"></i>
                 <h5 class="mb-0">Mis Pedidos Recientes</h5>
             </div>
             <span class="badge bg-primary">{{ recent_orders|length }}</span>
         </div>
     </div>
 
-    <div class="collapse" id="listaPedidos">
+    <div class="collapse" id="clientOrdersList">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">

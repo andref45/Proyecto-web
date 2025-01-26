@@ -19,21 +19,43 @@ class ClientHome {
     }
 
     initializeCollapsibles() {
-        // Manejo de las listas desplegables
         const collapseElements = document.querySelectorAll('[data-bs-toggle="collapse"]');
+        
         collapseElements.forEach(element => {
             const targetId = element.getAttribute('data-bs-target');
-            const icon = element.querySelector('.collapse-icon');
+            const icon = element.querySelector('.bi-chevron-down');
             
             if (targetId && icon) {
-                const collapse = document.querySelector(targetId);
+                const collapseContent = document.querySelector(targetId);
                 
-                if (collapse) {
-                    collapse.addEventListener('show.bs.collapse', () => {
+                if (collapseContent) {
+                    // Crear la instancia de collapse
+                    const bsCollapse = new bootstrap.Collapse(collapseContent, {
+                        toggle: false
+                    });
+    
+                    // Manejar el click manualmente
+                    element.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const isCollapsed = !collapseContent.classList.contains('show');
+                        
+                        if (isCollapsed) {
+                            bsCollapse.show();
+                            icon.style.transform = 'rotate(0deg)';
+                        } else {
+                            bsCollapse.hide();
+                            icon.style.transform = 'rotate(-90deg)';
+                        }
+                    });
+    
+                    // Manejar eventos de collapse
+                    collapseContent.addEventListener('shown.bs.collapse', () => {
                         icon.style.transform = 'rotate(0deg)';
                     });
-                    
-                    collapse.addEventListener('hide.bs.collapse', () => {
+    
+                    collapseContent.addEventListener('hidden.bs.collapse', () => {
                         icon.style.transform = 'rotate(-90deg)';
                     });
                 }
