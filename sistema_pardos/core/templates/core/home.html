@@ -4,21 +4,30 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/home.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 {% endblock extra_css %}
 
 {% block content %}
-{% if user.is_authenticated %}
+{% if not user.is_authenticated %}
+<!-- Login Section -->
+<div class="login-container">
+    <div class="login-card text-center">
+        <h1 class="display-4 mb-4">Bienvenido a Gestión de Inventarios</h1>
+        <p class="lead mb-4">Por favor, inicia sesión para acceder al sistema.</p>
+        <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-5">Iniciar Sesión</a>
+    </div>
+</div>
+
+{% elif user.is_staff %}
 <div class="container dashboard-container">
     <!-- Banner de Bienvenida -->
     <div class="welcome-banner">
         <h1 class="display-5 fw-bold mb-0">Gestión de Inventarios</h1>
         <p class="lead mb-0">Bienvenido, {{ user.username }}</p>
     </div>
-
-    {% if user.is_staff %}
-    <!-- Estadísticas de Pedidos -->
     <!-- Estadísticas de Pedidos -->
     <div class="row mb-4">
+        <!-- Pedidos Hoy -->
         <div class="col-md-6 col-lg-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -100,11 +109,8 @@
             </div>
         </div>
         <div class="card-body">
-            <canvas id="ordersChart" 
-                    data-labels='{{ chart_data.labels|safe }}'
-                    data-orders='{{ chart_data.orders|safe }}'
-                    data-meters='{{ chart_data.meters|safe }}'
-                    height="100">
+            <canvas id="ordersChart" data-labels='{{ chart_data.labels|safe }}'
+                data-orders='{{ chart_data.orders|safe }}' data-meters='{{ chart_data.meters|safe }}' height="100">
             </canvas>
         </div>
     </div>
@@ -134,7 +140,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Accesos Directos -->
     <h2 class="h4 mb-3">Accesos Directos</h2>
@@ -174,14 +179,11 @@
             </div>
         </div>
     </div>
-
-    {% if user.is_staff %}
     <!-- Panel colapsable de Pedidos para Staff -->
     <div class="card mt-4">
         <div class="card-header bg-white">
             <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
-                data-bs-target="#pedidosRecientes" aria-controls="pedidosRecientes"
-                style="cursor: pointer;">
+                data-bs-target="#pedidosRecientes" aria-controls="pedidosRecientes" style="cursor: pointer;">
                 <h5 class="mb-0">
                     <i class="bi bi-chevron-down me-2"></i>
                     Pedidos Recientes
@@ -194,14 +196,13 @@
 
         <div class="collapse" id="pedidosRecientes">
             <div class="card-body">
-                <!-- Filtros -->
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <form method="get" class="d-flex gap-2">
                             <select title="b" name="status" class="form-select form-select-sm">
                                 <option value="">Todos los estados</option>
                                 {% for value, label in order_status_choices %}
-                                <option value="{{ value }}" {% if selected_status and value == selected_status %}selected="selected"{% endif %}>
+                                <option value="{{ value }}" {% if selected_status and value == selected_status %}selected="selected" {% endif %}>
                                     {{ label }}
                                 </option>
                                 {% endfor %}
@@ -243,12 +244,10 @@
                                 <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
                                 <td>{{ order.total_meters|default:"--" }}</td>
                                 <td>
-                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info"
-                                        title="Ver Detalles">
+                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info" title="Ver Detalles">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                        data-bs-target="#updateStatusModal{{ order.id }}" title="Actualizar Estado">
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal{{ order.id }}" title="Actualizar Estado">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 </td>
@@ -266,66 +265,266 @@
             </div>
         </div>
     </div>
-    {% endif %}
-</div>
-{% else %}
-<div class="login-container">
-    <div class="login-card text-center">
-        <h1 class="display-4 mb-4">Bienvenido a Gestión de Inventarios</h1>
-        <p class="lead mb-4">Por favor, inicia sesión para acceder al sistema.</p>
-        <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-5">Iniciar Sesión</a>
-    </div>
-</div>
-{% endif %}
-{% if not user.is_staff %}
-<div class="card mt-4">
-    <div class="card-header bg-white">
-        <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
-            data-bs-target="#misPedidos" aria-controls="misPedidos" style="cursor: pointer;">
-            <h5 class="mb-0">
-                <i class="bi bi-chevron-down me-2"></i>
-                Mis Últimos Pedidos
-            </h5>
+    <!-- Modales para actualizar estado -->
+    {% for order in recent_orders %}
+    <div class="modal fade" id="updateStatusModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Actualizar Estado - Pedido #{{ order.id }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'order_update_status' order.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Estado Actual:
+                                <span class="badge bg-{{ order.status|status_badge }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </label>
+                            <select name="status" class="form-select">
+                                {% for value, label in order_status_choices %}
+                                    <option value="{{ value }}" {% if order.status == value %}selected="selected"{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-    <div class="collapse show" id="misPedidos">
-        <div class="card-body">
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="hero-section" style="background-image: url('{% static 'img/wood-bg.jpg' %}')">
+    <div class="hero-overlay"></div>
+    <div class="container position-relative">
+        <div class="hero-content">
+            <div class="hero-content" data-animation="animate__fadeIn">
+                <span class="hero-badge" data-animation="animate__fadeInDown">Primera Calidad</span>
+                <h1 class="mega-title" data-animation="animate__fadeInUp">Expertos en Tableros y Melamina</h1>
+                <p class="hero-subtitle" data-animation="animate__fadeInUp">Soluciones profesionales para tus proyectos de carpintería</p>
+            </div>
+                <a href="{% url 'order_create' %}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-plus-circle me-2"></i>Cotizar Ahora
+                </a>
+                <a href="#productos" class="btn btn-outline-light btn-lg ms-3">
+                    Ver Catálogo <i class="bi bi-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="section-divider"></div>
+
+
+<!-- Features Strip -->
+<div class="features-strip">
+    <div class="container">
+        <div class="features-grid">
+            <div class="feature-item" data-animation="animate__fadeInUp" data-animation-delay="100">
+                <i class="bi bi-truck"></i>
+                <h4>Despacho 24hrs</h4>
+                <p>Entrega rápida y segura</p>
+            </div>
+            <div class="feature-item" data-animation="animate__fadeInUp" data-animation-delay="200">
+                <i class="bi bi-shield-check"></i>
+                <h4>Calidad Garantizada</h4>
+                <p>Productos certificados</p>
+            </div>
+            <div class="feature-item" data-animation="animate__fadeInUp" data-animation-delay="300">
+                <i class="bi bi-rulers"></i>
+                <h4>Corte Preciso</h4>
+                <p>Alta precisión garantizada</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button -->
+<div class="floating-action">
+    <a href="{% url 'order_create' %}" class="btn btn-primary btn-lg fab-button">
+        <i class="bi bi-plus-lg"></i>
+        <span>Nuevo Pedido</span>
+    </a>
+</div>
+<section class="products-section" id="productos">
+    <div class="container">
+        <div class="section-header text-center">
+            <h6 class="text-primary fw-bold">NUESTROS PRODUCTOS</h6>
+            <h2 class="display-5 fw-bold mb-5">Descubre Nuestra Línea de Tableros</h2>
+        </div>
+        <div class="row">
+            <!-- Melamina -->
+            <div class="col-md-4" data-animation="animate__fadeIn" data-animation-delay="100">
+                <div class="product-card">
+                    <div class="product-image">
+                        <img src="{% static 'img/melamina-showcase.jpg' %}" alt="Melamina" class="product-img">
+                        <div class="product-overlay">
+                            <a href="#" class="btn btn-light">Ver Colores</a>
+                        </div>
+                    </div>
+                    <div class="product-content">
+                        <h3>Melamina</h3>
+                        <p class="mb-0">Tableros recubiertos con papel decorativo de alta resistencia</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MDF -->
+            <div class="col-md-4" data-animation="animate__fadeIn" data-animation-delay="200">
+                <div class="product-card">
+                    <div class="product-image">
+                        <img src="{% static 'img/mdf-showcase.jpg' %}" alt="MDF" class="product-img">
+                        <div class="product-overlay">
+                            <a href="#" class="btn btn-light">Ver Espesores</a>
+                        </div>
+                    </div>
+                    <div class="product-content">
+                        <h3>MDF</h3>
+                        <p class="mb-0">Tableros de fibra de densidad media para mayor durabilidad</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aglomerado -->
+            <div class="col-md-4" data-animation="animate__fadeIn" data-animation-delay="300">
+                <div class="product-card">
+                    <div class="product-image">
+                        <img src="{% static 'img/aglomerado-showcase.jpg' %}" alt="Aglomerado" class="product-img">
+                        <div class="product-overlay">
+                            <a href="#" class="btn btn-light">Ver Medidas</a>
+                        </div>
+                    </div>
+                    <div class="product-content">
+                        <h3>Aglomerado</h3>
+                        <p class="mb-0">Tableros de partículas de madera versátiles y económicos</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Services Section -->
+<section class="services-section parallax-section" style="background-image: url('{% static 'img/woodwork-bg.jpg' %}')">
+    <div class="parallax-overlay"></div>
+    <div class="container position-relative">
+        <div class="section-header text-center text-white mb-5">
+            <h6 class="text-light fw-bold">SERVICIOS</h6>
+            <h2 class="display-5 fw-bold">Servicios Profesionales</h2>
+            <p class="lead">Soluciones integrales para tus proyectos</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="service-card" data-animation="animate__fadeInUp">
+                    <div class="service-icon-wrapper">
+                        <i class="bi bi-rulers"></i>
+                    </div>
+                    <h4>Corte a Medida</h4>
+                    <p>Optimización y corte según tus especificaciones exactas. Aprovechamiento máximo del material.</p>
+                    <ul class="service-features">
+                        <li><i class="bi bi-check2"></i> Cortes precisos</li>
+                        <li><i class="bi bi-check2"></i> Optimización de material</li>
+                        <li><i class="bi bi-check2"></i> Acabado profesional</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="service-card h-100">
+                    <div class="service-icon-wrapper">
+                        <i class="bi bi-tools"></i>
+                    </div>
+                    <h4>Enchapado</h4>
+                    <p>Aplicación de tapacantos en PVC y melamina con tecnología de última generación.</p>
+                    <ul class="service-features">
+                        <li><i class="bi bi-check2"></i> Tapacanto PVC</li>
+                        <li><i class="bi bi-check2"></i> Acabado perfecto</li>
+                        <li><i class="bi bi-check2"></i> Alta durabilidad</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="service-card h-100">
+                    <div class="service-icon-wrapper">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                    <h4>Despacho</h4>
+                    <p>Servicio de entrega coordinado y seguro en toda la región metropolitana.</p>
+                    <ul class="service-features">
+                        <li><i class="bi bi-check2"></i> Entrega programada</li>
+                        <li><i class="bi bi-check2"></i> Seguimiento en línea</li>
+                        <li><i class="bi bi-check2"></i> Transporte seguro</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#listaPedidos" role="button" aria-expanded="false" aria-controls="listaPedidos">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-chevron-down me-2 collapse-icon"></i>
+                <h5 class="mb-0">Mis Pedidos Recientes</h5>
+            </div>
+            <span class="badge bg-primary">{{ recent_orders|length }}</span>
+        </div>
+    </div>
+
+    <div class="collapse" id="listaPedidos">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table">
+                <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Nº Pedido</th>
                             <th>Fecha</th>
                             <th>Estado</th>
                             <th>Total m²</th>
-                            <th>Acciones</th>
+                            <th class="text-end">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for order in recent_orders|slice:":5" %}
+                        {% for order in recent_orders %}
                         <tr>
-                            <td>#{{ order.id }}</td>
+                            <td><strong>#{{ order.id }}</strong></td>
                             <td>{{ order.created_at|date:"d/m/Y" }}</td>
                             <td>
                                 <span class="badge bg-{{ order.status|status_badge }}">
                                     {{ order.get_status_display }}
                                 </span>
                             </td>
-                            <td>{{ order.total_meters|default:"--" }}</td>
-                            <td>
-                                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-info">
-                                    <i class="bi bi-eye"></i> Ver Detalles
+                            <td>{{ order.total_meters|default:"-"|floatformat:2 }} m²</td>
+                            <td class="text-end">
+                                <a href="{% url 'order_detail' order.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i>Ver Detalles
                                 </a>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-4">
-                                <i class="bi bi-inbox display-4 d-block mb-3 text-muted"></i>
-                                <p>No tienes pedidos recientes</p>
-                                <a href="{% url 'order_create' %}" class="btn btn-primary">
-                                    <i class="bi bi-plus-circle me-2"></i>Crear Nuevo Pedido
-                                </a>
+                            <td colspan="5">
+                                <div class="empty-state py-5">
+                                    <i class="bi bi-inbox display-4 text-muted mb-3"></i>
+                                    <h5>No tienes pedidos recientes</h5>
+                                    <p class="text-muted mb-3">Comienza creando tu primer pedido</p>
+                                    <a href="{% url 'order_create' %}" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle me-2"></i>Crear Pedido
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -336,104 +535,79 @@
     </div>
 </div>
 
-<!-- Cards de Resumen Personal -->
-<div class="row g-4 mt-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                            <i class="bi bi-boxes"></i>
+<!-- Sección de Contacto -->
+<section class="contact-section">
+    <div class="container">
+        <div class="contact-wrapper">
+            <div class="contact-info" data-animation="animate__fadeInUp">
+                <h2 class="text-center text-white mb-5">Información de Contacto</h2>
+                <div class="contact-grid">
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="bi bi-geo-alt-fill"></i>
+                        </div>
+                        <div class="contact-text">
+                            <h5>Ubicación</h5>
+                            <p>Av. Principal 123, Santiago, Chile</p>
                         </div>
                     </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1">Total Pedidos</h6>
-                        <h3 class="mb-0">{{ orders_stats.total_month }}</h3>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="bi bi-clock-fill"></i>
+                        </div>
+                        <div class="contact-text">
+                            <h5>Horario de Atención</h5>
+                            <p>Lun - Vie: 8:30 - 18:00<br>Sáb: 9:00 - 13:00</p>
+                        </div>
                     </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="bi bi-telephone-fill"></i>
+                        </div>
+                        <div class="contact-text">
+                            <h5>Contacto</h5>
+                            <p>+56 9 1234 5678<br>ventas@pardoscl.com</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="social-links">
+                    <a href="#" class="social-link" title="Facebook">
+                        <i class="bi bi-facebook"></i>
+                    </a>
+                    <a href="#" class="social-link" title="Instagram">
+                        <i class="bi bi-instagram"></i>
+                    </a>
+                    <a href="#" class="social-link" title="WhatsApp">
+                        <i class="bi bi-whatsapp"></i>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="stat-icon bg-success bg-opacity-10 text-success">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1">Pedidos Completados</h6>
-                        <h3 class="mb-0">{{ orders_stats.completed }}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
-                            <i class="bi bi-clock-history"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1">En Proceso</h6>
-                        <h3 class="mb-0">{{ orders_stats.processing }}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 
-{% endif %}
-
-{% if user.is_staff %}
-<!-- Modales para actualizar estado -->
-{% for order in recent_orders %}
-<div class="modal fade" id="updateStatusModal{{ order.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Actualizar Estado - Pedido #{{ order.id }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Footer -->
+<footer class="footer mt-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="mb-0">© 2025 Pardos CL. Todos los derechos reservados.</p>
             </div>
-            <form method="post" action="{% url 'order_update_status' order.id %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Estado Actual:
-                            <span class="badge bg-{{ order.status|status_badge }}">
-                                {{ order.get_status_display }}
-                            </span>
-                        </label>
-                        <select name="status" class="form-select">
-                            {% for value, label in order_status_choices %}
-                            <option value="{{ value }}" {% if order.status and value == order.status %}selected="selected"{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+            <div class="col-md-6 text-md-end">
+                <div class="footer-links">
+                    <a href="#">Términos y Condiciones</a>
+                    <a href="#">Política de Privacidad</a>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
-</div>
-{% endfor %}
+</footer>
+
 {% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'js/dashboard.js' %}"></script>
+<script src="{% static 'js/client-home.js' %}"></script>
 {% endblock %}
