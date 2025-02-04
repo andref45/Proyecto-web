@@ -1,78 +1,65 @@
-class NotificationManager {
-    constructor() {
-        this.container = document.getElementById('notification-container');
-        this.checkInterval = 30000; // 30 segundos
-        this.init();
-    }
-
-    init() {
-        this.checkNotifications();
-        setInterval(() => this.checkNotifications(), this.checkInterval);
-    }
-
-    async checkNotifications() {
-        try {
-            const response = await fetch('/get-notifications/');
-            const data = await response.json();
-            this.updateNotifications(data.notifications);
-        } catch (error) {
-            console.error('Error checking notifications:', error);
-        }
-    }
-
-    updateNotifications(notifications) {
-        if (!this.container) return;
-        
-        if (notifications.length > 0) {
-            this.container.innerHTML = notifications.map(n => this.createNotificationHTML(n)).join('');
-            this.addEventListeners();
-        } else {
-            this.container.innerHTML = '<p class="text-muted m-0">No hay notificaciones nuevas</p>';
-        }
-    }
-
-    createNotificationHTML(notification) {
-        return `
-            <div class="notification-item p-3 border-bottom" data-id="${notification.id}">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="mb-1">${notification.message}</p>
-                        <small class="text-muted">${notification.created_at}</small>
+function updateNotifications() {
+    fetch('/get-notifications/')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('notification-container');
+            const badge = document.getElementById('notification-badge');
+            if (data.notifications.length > 0) {
+                badge.style.display = 'block';
+                badge.textContent = data.notifications.length;
+                container.innerHTML = data.notifications.map(notification => `
+                    <div class="dropdown-item border-bottom py-2">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">${notification.created_at}</small>
+                            <button onclick="markAsRead(${notification.id})" class="btn btn-sm btn-link p-0">
+                                <i class="bi bi-check2"></i>
+                            </button>
+                        </div>
+                        <div>${notification.message}</div>
                     </div>
-                    <button class="btn btn-sm btn-link mark-read">
-                        <i class="bi bi-check2"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    addEventListeners() {
-        this.container.querySelectorAll('.mark-read').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const item = e.target.closest('.notification-item');
-                if (item) {
-                    this.markAsRead(item.dataset.id);
-                }
-            });
-        });
-    }
-
-    async markAsRead(notificationId) {
-        try {
-            await fetch(`/mark-notification-read/${notificationId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            });
-            this.checkNotifications();
-        } catch (error) {
-            console.error('Error marking notification as read:', error);
-        }
-    }
+                `).join('');
+            } else {
+                badge.style.display = 'none';
+                container.innerHTML = '<div class="p-3 text-center text-muted">No hay notificaciones</div>';
+            }
+        })
+        .catch(error => console.error('Error:', error));
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new NotificationManager();
+function markAsRead(notificationId) {
+    fetch(`/mark-notification-read/${notificationId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotifications();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function clearAllNotifications() {
+    fetch('/clear-notifications/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotifications();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// Actualizar notificaciones cada 30 segundos
+document.addEventListener('DOMContentLoaded', function() {
+    updateNotifications();
+    setInterval(updateNotifications, 30000);
 });

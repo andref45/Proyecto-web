@@ -823,24 +823,49 @@ def dashboard_data(request):
 
 @login_required
 def get_notifications(request):
+    from django.utils import timezone
+    
     notifications = OrderNotification.objects.select_related('order').filter(
         order__customer=request.user,
         is_read=False
     ).order_by('-created_at')[:5]
     
+    print("DEBUG - Hora servidor:", timezone.now())  # Para debugging
+    
     return JsonResponse({
         'notifications': [{
             'id': n.id,
             'message': n.message,
-            'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
+            'created_at': timezone.localtime(n.created_at).strftime('%d/%m/%Y %H:%M'),
             'order_id': n.order_id
         } for n in notifications]
     })
 
 @login_required
-def mark_notification_read(request, notification_id):
-    OrderNotification.objects.filter(id=notification_id).update(is_read=True)
+def clear_notifications(request):
+    """Marca todas las notificaciones del usuario como leídas"""
+    OrderNotification.objects.filter(
+        order__customer=request.user,
+        is_read=False
+    ).update(is_read=True)
     return JsonResponse({'success': True})
+
+from django.views.decorators.http import require_http_methods
+
+@login_required
+@require_http_methods(["POST"])
+def mark_notification_read(request, notification_id):
+    try:
+        notification = OrderNotification.objects.get(
+            id=notification_id,
+            order__customer=request.user,
+            is_read=False
+        )
+        notification.is_read = True
+        notification.save()
+        return JsonResponse({'success': True})
+    except OrderNotification.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Notification not found'}, status=404)
 
 @login_required
 def customer_orders(request):

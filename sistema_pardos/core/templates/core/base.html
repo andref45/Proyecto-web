@@ -15,11 +15,8 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 
     {% load static %}
-    <script src="{% static '/js/quickEntry.js' %}"></script>
-
     {% load stock_alerts %}
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
 
@@ -27,6 +24,7 @@
 </head>
 
 <body>
+    {% csrf_token %}
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'home' %}">
@@ -45,13 +43,14 @@
                             <i class="bi bi-house-door me-2"></i>Inicio
                         </a>
                     </li>
+                    {% if request.user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}"
                             href="{% url 'product_list' %}">
                             <i class="bi bi-box-seam me-2"></i>Productos
                         </a>
                     </li>
-                    {% if request.user.is_authenticated and request.user.is_staff %}
+                    {% if request.user.is_staff %}
                     <li class="nav-item">
                         <a class="nav-link {% if 'board' in request.resolver_match.url_name %}active{% endif %}"
                             href="{% url 'board_list' %}">
@@ -77,7 +76,6 @@
                         </a>
                     </li>
                     {% endif %}
-                    {% if request.user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'exit' %}">
                             <i class="bi bi-box-arrow-right me-2"></i>Salir
@@ -117,39 +115,24 @@
         </div>
         {% endif %}
         {% endif %}
-    </div>
 
-    <div class="container">
         {% if messages %}
         {% for message in messages %}
         <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
             {{ message }}
-            <button title="base" type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
         {% endif %}
+
         {% block content %}{% endblock %}
     </div>
-    <div class="dropdown">
-        <button title="s" class="btn btn-link position-relative" type="button" id="notificationDropdown"
-            data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-bell"></i>
-            <span id="notification-badge"
-                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                style="display: none;">
-                0
-            </span>
-        </button>
-        <div class="dropdown-menu dropdown-menu-end" style="width: 300px;" aria-labelledby="notificationDropdown">
-            <div class="p-2">
-                <h6 class="mb-2">Notificaciones</h6>
-                <div id="notification-container">
-                </div>
-            </div>
-        </div>
-    </div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% if request.user.is_authenticated and not request.user.is_staff %}
+    <script src="{% static 'js/notifications.js' %}"></script>
+    {% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 

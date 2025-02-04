@@ -12,6 +12,7 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('products/add/', views.product_add, name='product_add'),
     path('products/<int:pk>/edit/', views.product_edit, name='product_edit'),
+    path('clear-notifications/', views.clear_notifications, name='clear_notifications'),
 
 
     # URLs Inventario

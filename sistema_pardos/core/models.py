@@ -474,8 +474,14 @@ class OrderNotification(models.Model):
         
     @classmethod
     def create_status_notification(cls, order, old_status=None):
+        from django.utils import timezone
+        now = timezone.localtime(timezone.now())  # Explícitamente usar hora local
         message = f'Pedido #{order.id} actualizado a {order.get_status_display()}'
-        return cls.objects.create(order=order, message=message)
+        return cls.objects.create(
+            order=order, 
+            message=message,
+            created_at=now
+        )
     
 class Product(models.Model):
     name = models.CharField(max_length=200, verbose_name="Nombre")
